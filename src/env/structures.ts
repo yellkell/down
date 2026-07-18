@@ -1,15 +1,10 @@
 import {
   AdditiveBlending,
   BoxGeometry,
-  BufferGeometry,
   DodecahedronGeometry,
-  EdgesGeometry,
-  Float32BufferAttribute,
   Group,
   IcosahedronGeometry,
   InstancedMesh,
-  LineBasicMaterial,
-  LineSegments,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
@@ -40,10 +35,10 @@ const MIST_FULL = -245;
 const HAZE_COLOR = [0.11, 0.04, 0.14] as const;
 
 /**
- * The skyline: dark towers lining the descent corridor, their faces alive with
- * procedurally-lit neon windows, rising out of the cloud sea. One instanced
- * mesh drives all of them via a window-grid shader; a merged line-set adds edge
- * trim and beacons crown the tallest roofs.
+ * The skyline: dark glass monoliths lining the descent corridor, sparsely
+ * lit, rising out of the cloud sea. One instanced mesh drives all of them;
+ * form comes from face shading in the shader (no drawn outlines), and
+ * beacons crown the tallest roofs.
  */
 export function createMegastructures(): CityHandles {
   const group = new Group();
@@ -52,10 +47,6 @@ export function createMegastructures(): CityHandles {
 
   const boxGeometry = new BoxGeometry(1, 1, 1);
   const fill = new InstancedMesh(boxGeometry, makeWindowMaterial(uniforms), COUNT);
-
-  const edgePositions: number[] = [];
-  const edgeSource = new EdgesGeometry(boxGeometry);
-  const edgeArray = edgeSource.attributes.position.array as Float32Array;
 
   const matrix = new Matrix4();
   const quaternion = new Quaternion();
@@ -81,38 +72,12 @@ export function createMegastructures(): CityHandles {
     matrix.compose(position, quaternion, scale);
     fill.setMatrixAt(i, matrix);
 
-    // Bake this instance's edges into one static line geometry. Clamp the
-    // verticals at the mist top so no crisp line runs down into the haze.
-    const v = new Vector3();
-    for (let j = 0; j < edgeArray.length; j += 3) {
-      v.set(edgeArray[j], edgeArray[j + 1], edgeArray[j + 2]).applyMatrix4(matrix);
-      edgePositions.push(v.x, Math.max(v.y, -172), v.z);
-    }
-
     const top = baseY + height;
     if (top > 120) beacons.push(new Vector3(x, top + 6, z));
   }
   fill.instanceMatrix.needsUpdate = true;
   fill.frustumCulled = false;
   group.add(fill);
-
-  const edgeGeometry = new BufferGeometry();
-  edgeGeometry.setAttribute(
-    'position',
-    new Float32BufferAttribute(edgePositions, 3)
-  );
-  const edges = new LineSegments(
-    edgeGeometry,
-    new LineBasicMaterial({
-      color: NEON.purple,
-      transparent: true,
-      opacity: 0.22,
-      blending: AdditiveBlending,
-      depthWrite: false
-    })
-  );
-  edges.frustumCulled = false;
-  group.add(edges);
 
   beacons.forEach((p, i) => {
     const glow = makeGlow(i % 2 === 0 ? NEON.red : NEON.cyan, 9, 0.6);
@@ -159,6 +124,7 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
       varying vec3 vScale;
       varying vec3 vWorld;
       varying vec3 vRand;
+      varying float vShade;
       void main() {
         vLocal = position;
         vNormalL = normal;
@@ -175,6 +141,16 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
           fract(sin(dot(fp, vec2(39.3468, 11.135))) * 24634.6345),
           fract(sin(dot(fp, vec2(73.156, 52.235))) * 12345.6789)
         );
+
+        // Fake moonlight from one side of the sky: each face gets a fixed
+        // shade so the monoliths read as 3D glass, not flat cutouts.
+        vec3 wn = normalize(mat3(instanceMatrix) * normal);
+        if (abs(wn.y) > 0.5) {
+          vShade = 1.0;
+        } else {
+          vShade = 0.72 + 0.28 * dot(normalize(wn.xz), normalize(vec2(0.45, -0.89)));
+        }
+
         vec4 world = modelMatrix * instanceMatrix * vec4(position, 1.0);
         vWorld = world.xyz;
         gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
@@ -186,6 +162,7 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
       varying vec3 vScale;
       varying vec3 vWorld;
       varying vec3 vRand;
+      varying float vShade;
       uniform float uTime;
       uniform sampler2D uWindows;
       uniform float uMistTop;
@@ -195,7 +172,10 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
 
       void main() {
         vec3 an = abs(vNormalL);
-        vec3 body = vec3(0.012, 0.016, 0.045);
+        // Dark blue glass, shaded per face, with a faint sheen rising
+        // toward the crown — form without a single drawn line.
+        float sheen = 0.8 + 0.5 * clamp((vWorld.y + 80.0) / 420.0, 0.0, 1.0);
+        vec3 body = vec3(0.014, 0.02, 0.05) * vShade * sheen;
         vec3 col = body;
 
         if (an.y < 0.5) {
@@ -214,14 +194,15 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
           vec4 win = texture2D(uWindows, uv);
 
           // Slow "city breathing" — low-frequency only, so nothing shimmers.
-          float breathe = 0.78 + 0.22 * vnoise(vec3(vWorld.xz * 0.012, uTime * 0.06));
+          float breathe = 0.8 + 0.2 * vnoise(vec3(vWorld.xz * 0.012, uTime * 0.06));
 
-          // Some towers blaze, some sit nearly dark.
-          float towerLit = 0.25 + 1.3 * pow(vRand.z, 1.7);
+          // Some towers glow, most sit dim — coverage stays sparse, but
+          // each lit pane keeps its punch.
+          float towerLit = 0.18 + 1.05 * pow(vRand.z, 1.8);
 
-          col += win.rgb * win.a * 1.6 * breathe * towerLit;
+          col += win.rgb * win.a * 1.5 * breathe * towerLit;
         } else {
-          col = body * 1.5; // roof caps read slightly lighter
+          col = body * 1.4; // roof caps read slightly lighter
         }
 
         // Melt into the mist: fully haze-colored before the cloud sea.

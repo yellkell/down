@@ -37,19 +37,21 @@ export function makeWindowTexture(): CanvasTexture {
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, w, h);
 
-  const cols = 12;
-  const rows = 16;
+  const cols = 16;
+  const rows = 20;
   const cw = w / cols;
   const ch = h / rows;
   const rnd = seededRandom(1979);
-  // Weighted palette: mostly warm sodium/amber, cyan accents, rare magenta.
+  // Near-monochrome office light: warm white / cool white, faint amber.
+  // Saturated neon is reserved for signage and the environment — colored
+  // window confetti is what makes a skyline look cheap.
   const palette: Array<[string, number]> = [
-    ['#ffb45e', 0.32],
-    ['#ffd9a0', 0.24],
-    ['#7defff', 0.16],
-    ['#29f3ff', 0.11],
-    ['#ff3df2', 0.06],
-    ['#ffffff', 0.11]
+    ['#ffe6bf', 0.38],
+    ['#d9e6ff', 0.3],
+    ['#ffd28f', 0.16],
+    ['#c3f2ff', 0.1],
+    ['#ffffff', 0.04],
+    ['#ffb0ef', 0.02]
   ];
   const pick = (): string => {
     let p = rnd();
@@ -60,43 +62,34 @@ export function makeWindowTexture(): CanvasTexture {
     return palette[0][0];
   };
 
+  // Small, crisp panes — barely any bloom. Sharp lights read expensive.
   const drawPane = (c: number, r: number, color: string, alpha: number): void => {
     ctx.globalAlpha = alpha;
     ctx.fillStyle = color;
     ctx.shadowColor = color;
-    ctx.shadowBlur = 4;
-    ctx.fillRect(c * cw + cw * 0.18, r * ch + ch * 0.24, cw * 0.64, ch * 0.46);
+    ctx.shadowBlur = 1.5;
+    ctx.fillRect(c * cw + cw * 0.26, r * ch + ch * 0.3, cw * 0.48, ch * 0.36);
   };
 
   for (let r = 0; r < rows; r++) {
-    const mode = rnd();
     // Each floor leans toward one color temperature — offices share lighting.
     const floorColor = pick();
 
-    if (mode < 0.16) {
+    if (rnd() < 0.3) {
       // Dark floor: at most a lone late-night window.
-      if (rnd() < 0.3) drawPane(Math.floor(rnd() * cols), r, pick(), 0.5);
-      continue;
-    }
-    if (mode < 0.27) {
-      // Fully lit strip floor — one continuous band of light.
-      ctx.globalAlpha = 0.55 + rnd() * 0.3;
-      ctx.fillStyle = floorColor;
-      ctx.shadowColor = floorColor;
-      ctx.shadowBlur = 6;
-      ctx.fillRect(cw * 0.1, r * ch + ch * 0.26, w - cw * 0.2, ch * 0.42);
+      if (rnd() < 0.25) drawPane(Math.floor(rnd() * cols), r, pick(), 0.7);
       continue;
     }
 
-    // Normal floor: windows light in clustered runs of 1-4.
-    const density = 0.18 + rnd() * 0.42;
+    // Normal floor: mostly dark, windows lit in clustered runs of 1-4.
+    const density = 0.05 + rnd() * 0.22;
     let c = 0;
     while (c < cols) {
       if (rnd() < density) {
         const run = 1 + Math.floor(rnd() * rnd() * 4);
-        const runColor = rnd() < 0.75 ? floorColor : pick();
+        const runColor = rnd() < 0.8 ? floorColor : pick();
         for (let k = 0; k < run && c + k < cols; k++) {
-          drawPane(c + k, r, runColor, 0.45 + rnd() * 0.55);
+          drawPane(c + k, r, runColor, 0.55 + rnd() * 0.45);
         }
         c += run + 1;
       } else {
