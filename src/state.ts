@@ -18,6 +18,8 @@ export const game = {
   warning: 0,
   /** 0..1 — proximity to the kill-zone edge, drives red glow. */
   danger: 0,
+  /** Set to 1 when a slide lands; decays to 0, driving the deck shockwave. */
+  arrival: 0,
   /** Current slide speed in m/s, drives vignette + streaks. */
   slideSpeed: 0
 };
@@ -50,5 +52,6 @@ export function resetGameState(): void {
   game.isFinal = false;
   game.warning = 0;
   game.danger = 0;
+  game.arrival = 0;
   game.slideSpeed = 0;
 }

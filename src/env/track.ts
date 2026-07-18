@@ -15,7 +15,7 @@ import {
 } from '@iwsdk/core';
 
 import { NEON, SLIDE_ANGLE } from '../constants.js';
-import { makeGlow } from './fx.js';
+import { makeGlow, makeTextTexture } from './fx.js';
 
 export interface TrackHandles {
   group: Group;
@@ -77,8 +77,9 @@ export function createSlideTrack(length: number): TrackHandles {
         float arrow = smoothstep(0.0, 0.05, chev) * smoothstep(0.16, 0.11, chev);
         col += cyan * arrow * 0.5;
 
-        // Lane dividers.
-        float divider = lineAt(vLocal.x, -0.5) + lineAt(vLocal.x, 0.5);
+        // Lane dividers framing the three lanes (centers at -0.5, 0, 0.5).
+        float divider = lineAt(vLocal.x, -0.75) + lineAt(vLocal.x, -0.25)
+                      + lineAt(vLocal.x, 0.25) + lineAt(vLocal.x, 0.75);
         col += magenta * divider * (0.55 + 0.25 * sin(uTime * 3.0));
         alpha = max(alpha, divider * 0.9);
 
@@ -95,6 +96,34 @@ export function createSlideTrack(length: number): TrackHandles {
   ribbon.position.set(0, -0.02, -length / 2);
   group.add(ribbon);
   disposables.push(ribbon.geometry, ribbonMaterial);
+
+  // --- "LOOK FORWARD" decals painted on the track surface across the first
+  // stretch, so the cue sits beneath the player through the whole drop-in. --
+  const forwardTexture = makeTextTexture('LOOK  FORWARD');
+  const chevronTexture = makeTextTexture('▼', { width: 256, height: 256 });
+  disposables.push(forwardTexture, chevronTexture);
+  const decalGeometry = new PlaneGeometry(3.4, 0.85);
+  const chevronGeometry = new PlaneGeometry(0.9, 0.9);
+  disposables.push(decalGeometry, chevronGeometry);
+  const makeDecal = (texture: typeof forwardTexture, geo: typeof decalGeometry, z: number) => {
+    const mat = new MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      blending: AdditiveBlending,
+      depthWrite: false,
+      side: DoubleSide
+    });
+    const mesh = new Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2; // lie flat on the ribbon
+    mesh.position.set(0, 0.02, z);
+    group.add(mesh);
+    disposables.push(mat);
+  };
+  // Repeat down the entry so it stays under you as you accelerate away.
+  makeDecal(forwardTexture, decalGeometry, -6);
+  makeDecal(chevronTexture, chevronGeometry, -9);
+  makeDecal(forwardTexture, decalGeometry, -18);
+  makeDecal(chevronTexture, chevronGeometry, -22);
 
   // --- Rails ------------------------------------------------------------
   const railGeometry = new BoxGeometry(0.06, 0.06, length);
@@ -222,6 +251,10 @@ export function createStreaks(): StreakHandles {
   const object = new LineSegments(geometry, material);
   object.frustumCulled = false;
   object.visible = false;
+  // Streaks only ever show mid-slide, so rake the whole field down the slope:
+  // pitched by the slide angle, the lines (and their scroll) run parallel to
+  // the descent instead of straight along the rig's horizontal -Z.
+  object.rotation.x = -SLIDE_ANGLE;
   return { object, uniforms };
 }
 

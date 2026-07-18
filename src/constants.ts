@@ -1,11 +1,15 @@
 /**
  * Central tuning for DOWN.
- * The descent: 3 dodge rounds at 150m / 75m / 0m, connected by 20° slides,
- * then a final 150m victory drop to the finish zone at -150m.
+ * The descent: 3 dodge rounds at 220m / 120m / 20m, connected by long 32°
+ * slides, then a final ~190m victory drop to the finish zone at -170m.
+ * Platforms are spread far apart vertically so each slide runs a good while.
  */
-export const PHASE_HEIGHTS = [150, 75, 0];
-export const WINNER_HEIGHT = -150;
+export const PHASE_HEIGHTS = [220, 120, 20];
+export const WINNER_HEIGHT = -170;
 export const TOTAL_ROUNDS = 3;
+
+/** Total vertical descent, start pad to finish zone (drives the win stat). */
+export const TOTAL_DESCENT = PHASE_HEIGHTS[0] - WINNER_HEIGHT;
 
 /** `?turbo` shortens rounds — handy when testing slides and the win flow. */
 const TURBO =
@@ -27,10 +31,13 @@ export const PROJECTILE_SPEED = [14, 16, 18]; // m/s upwards
 export const PROJECTILE_SPAWN_Y = -60;
 export const PROJECTILE_DESPAWN_Y = 3;
 
-/** Slide barriers: lane offsets across the 3-lane track. */
-export const LANE_X = [-0.4, 0, 0.4];
-export const BARRIER_SIZE = { w: 0.25, h: 2.4, d: 0.15 };
-export const BARRIER_SPACING = [20, 15, 15]; // per slide (1st, 2nd, final) — tighter to match the shorter, steeper runs
+/**
+ * Slide barriers ("pegs"): lane offsets across the 3-lane track. Lanes are
+ * spread to ±0.5m so the wider slabs still leave a clear gap to dodge into.
+ */
+export const LANE_X = [-0.5, 0, 0.5];
+export const BARRIER_SIZE = { w: 0.42, h: 2.6, d: 0.22 }; // wider, chunkier walls
+export const BARRIER_SPACING = [22, 17, 17]; // per slide (1st, 2nd, final)
 
 export const HEAD_RADIUS = 0.12;
 

@@ -8,11 +8,12 @@ A roomscale VR descent game for the immersive web, rebuilt on Meta's
 push (the original lives at [`/legacy/`](https://yellkell.github.io/down/legacy/),
 the Christmas sled at [`/vrxmas/`](https://yellkell.github.io/down/vrxmas/)).
 
-You start 300 meters up, standing on a floating neon platform in the void.
+You start 220 meters up, standing on a floating neon platform in the void.
 Dodge the glowing shapes that surge up through the grid, survive the round,
-then ride a steep 32° slide of light down to the next platform. Three
-rounds, two slides, and one final 150-meter victory drop to a finish zone
-that stays hidden in the fog until you commit to it.
+then ride a long, steep 32° slide of light down to the next platform. Three
+rounds, two slides, and one final ~190-meter victory drop to a finish zone
+that stays hidden in the fog until you commit to it. Each landing lands with
+a shockwave and a beat to steady yourself before the next round rises.
 
 | Start | Slide | Finish |
 | --- | --- | --- |

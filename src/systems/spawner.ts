@@ -156,7 +156,7 @@ export class GridSpawnerSystem extends createSystem({}) {
 
     const shape = this.shapes[Math.floor(Math.random() * this.shapes.length)];
     const color = OBSTACLE_COLORS[Math.floor(Math.random() * OBSTACLE_COLORS.length)];
-    const radius = 0.3 + Math.random() * 0.2;
+    const radius = 0.34 + Math.random() * 0.2;
 
     const group = new Group();
     group.position.set(x, this.player.position.y + PROJECTILE_SPAWN_Y, z);
@@ -166,24 +166,41 @@ export class GridSpawnerSystem extends createSystem({}) {
       Math.random() * Math.PI
     );
 
-    const core = new Mesh(shape.geometry, new MeshBasicMaterial({ color: 0x000000 }));
-    core.scale.setScalar(radius * 0.9);
+    // Dark core so the bright edges have something solid to sit against.
+    const core = new Mesh(shape.geometry, new MeshBasicMaterial({ color: 0x02020a }));
+    core.scale.setScalar(radius * 0.82);
     group.add(core);
+
+    // Additive body shell — gives the whole shape a lit, glowing volume
+    // instead of a thin wire that reads as dim.
+    const body = new Mesh(
+      shape.geometry,
+      new MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.28,
+        blending: AdditiveBlending,
+        depthWrite: false
+      })
+    );
+    body.scale.setScalar(radius);
+    group.add(body);
 
     const wire = new LineSegments(
       shape.edges,
       new LineBasicMaterial({
         color,
         transparent: true,
-        opacity: 0.95,
+        opacity: 1,
         blending: AdditiveBlending,
         depthWrite: false
       })
     );
-    wire.scale.setScalar(radius);
+    wire.scale.setScalar(radius * 1.03);
     group.add(wire);
 
-    const glow: Sprite = makeGlow(color, radius * 3.2, 0.4);
+    // Bright halo so blocks pop out of the void the moment they rise.
+    const glow: Sprite = makeGlow(color, radius * 5.0, 0.8);
     group.add(glow);
 
     this.scene.add(group);

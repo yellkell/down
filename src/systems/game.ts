@@ -17,6 +17,7 @@ import {
   HEAD_RADIUS,
   KILL_ZONE,
   PHASE_HEIGHTS,
+  TOTAL_DESCENT,
   TOTAL_ROUNDS,
   WINNER_HEIGHT
 } from '../constants.js';
@@ -71,6 +72,8 @@ export class GameSystem extends createSystem({
   private introTimer = 0;
   private beepAt = 0;
   private started = false;
+  /** Settle hold on a fresh platform before the blocks start rising. */
+  private gridHold = 0;
 
   private get panels(): PanelEntities {
     return this.globals.panels as PanelEntities;
@@ -190,8 +193,8 @@ export class GameSystem extends createSystem({
     window.setTimeout(() => audio.startMusic(), 400);
     this.setPanelVisible(this.panels?.start, false);
     this.setPanelVisible(this.panels?.hud, true);
-    this.enterGrid();
     emit('game-start');
+    this.enterGrid(1.6);
   }
 
   private retry(): void {
@@ -206,17 +209,21 @@ export class GameSystem extends createSystem({
     this.hudCache = {};
     audio.play('begin');
     audio.startMusic();
-    this.enterGrid();
+    this.enterGrid(1.6);
   }
 
-  private enterGrid(): void {
+  /**
+   * Arrive on a platform. We hold for `hold` seconds — no blocks, no timer —
+   * so landing reads as a distinct beat before the dodge round begins.
+   * The rising blocks only start once the hold elapses (grid-start).
+   */
+  private enterGrid(hold: number): void {
     game.phase = 'GRID';
     game.timeInPhase = 0;
     game.warning = 0;
-    this.beepAt = 3;
-    this.introTimer = 2.5;
-    this.showWarning('LOOK DOWN', 2.5);
-    emit('grid-start');
+    game.danger = 0;
+    this.gridHold = hold;
+    this.showWarning('LOOK DOWN', hold + 0.5);
   }
 
   private enterSlide(): void {
@@ -225,6 +232,9 @@ export class GameSystem extends createSystem({
     game.warning = 0;
     game.danger = 0;
     game.isFinal = game.round >= TOTAL_ROUNDS;
+
+    // Guarantee a clean launch: no stray blocks left rising into the slide.
+    this.world.getSystem(GridSpawnerSystem)?.deactivate();
 
     const slide = this.world.getSystem(SlideSystem);
     if (!slide) return;
@@ -236,14 +246,15 @@ export class GameSystem extends createSystem({
 
     // Sign progression: heading to round 2 -> middle sign, round 3 -> bottom.
     this.env?.signs.show(Math.min(game.round, 2));
-    this.showWarning(game.isFinal ? 'FINAL DROP' : 'SLIDE', 2);
+    this.showWarning(game.isFinal ? 'FINAL DROP' : 'SLIDE', 1.6);
   }
 
   private onSlideComplete(): void {
     // Escalating praise: "nice" after the first slide, "perfect" after the second.
     audio.play(game.round === 1 ? 'nice' : 'perfect');
+    game.arrival = 1; // deck shockwave — you've touched down
     game.round += 1;
-    this.enterGrid();
+    this.enterGrid(2.0);
   }
 
   private onWin(): void {
@@ -255,7 +266,7 @@ export class GameSystem extends createSystem({
 
     this.endTitle?.setProperties({ text: 'YOU MADE IT!' });
     this.endStats?.setProperties({
-      text: `300M DESCENDED  ·  ${this.formatTime(game.runTime)}`
+      text: `${TOTAL_DESCENT}M DESCENDED  ·  ${this.formatTime(game.runTime)}`
     });
     this.setPanelVisible(this.panels?.hud, false);
     this.setPanelVisible(this.panels?.warn, false);
@@ -293,8 +304,8 @@ export class GameSystem extends createSystem({
     }
 
     game.runTime += delta;
-    game.timeInPhase += delta;
 
+    // Panel timers always tick, even during the settle hold.
     if (this.warnTimer > 0) {
       this.warnTimer -= delta;
       if (this.warnTimer <= 0) this.setPanelVisible(this.panels?.warn, false);
@@ -303,6 +314,23 @@ export class GameSystem extends createSystem({
 
     this.player.head.getWorldPosition(this.headWorld);
     this.setHud('alt', `ALT ${Math.round(this.player.position.y - WINNER_HEIGHT)}M`);
+
+    // Settle beat: freshly landed, holding before the blocks rise. No timer,
+    // no spawns, no collisions — just recover your footing and look down.
+    if (game.phase === 'GRID' && this.gridHold > 0) {
+      this.gridHold -= delta;
+      this.setHud('round', `ROUND ${game.round}/${TOTAL_ROUNDS}`);
+      this.setHud('timer', String(GRID_DURATION));
+      this.setHud('status', 'STEADY — LOOK DOWN');
+      if (this.gridHold <= 0) {
+        this.beepAt = 3;
+        this.introTimer = 2.5;
+        emit('grid-start');
+      }
+      return;
+    }
+
+    game.timeInPhase += delta;
 
     if (game.phase === 'GRID') {
       this.updateGrid(delta);

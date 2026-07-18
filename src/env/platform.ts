@@ -18,6 +18,8 @@ export interface PlatformHandles {
     uTime: { value: number };
     uWarning: { value: number };
     uDanger: { value: number };
+    /** 1 at the instant a slide lands, eased back to 0 — drives the shockwave. */
+    uArrival: { value: number };
   };
 }
 
@@ -31,7 +33,8 @@ export function createPlatform(): PlatformHandles {
   const uniforms = {
     uTime: { value: 0 },
     uWarning: { value: 0 },
-    uDanger: { value: 0 }
+    uDanger: { value: 0 },
+    uArrival: { value: 0 }
   };
 
   const half = GRID_SIZE / 2; // 0.75
@@ -58,6 +61,7 @@ export function createPlatform(): PlatformHandles {
       uniform float uTime;
       uniform float uWarning;
       uniform float uDanger;
+      uniform float uArrival;
       uniform float uHalf;
       uniform float uKill;
 
@@ -91,10 +95,11 @@ export function createPlatform(): PlatformHandles {
         col += cyan * wide;
         alpha += wide * 0.8;
 
-        // Dark translucent fill inside the play area (ground reference).
+        // Faint tint inside the play area — kept low-alpha so the rising
+        // blocks stay clearly visible coming up through the deck.
         float inPad = step(max(abs(vPos.x), abs(vPos.y)), uKill + 0.12);
-        col += vec3(0.01, 0.012, 0.03) * inPad;
-        alpha = max(alpha, inPad * 0.72);
+        col += vec3(0.02, 0.06, 0.09) * inPad;
+        alpha = max(alpha, inPad * 0.22);
 
         // Bright 2x2 play grid + cross.
         float inGrid = step(max(abs(vPos.x), abs(vPos.y)), uHalf);
@@ -114,6 +119,13 @@ export function createPlatform(): PlatformHandles {
         float sweep = sin(vPos.y * 4.0 + uTime * 9.0) * 0.5 + 0.5;
         col += magenta * uWarning * sweep * inPad * 0.6;
         alpha = max(alpha, uWarning * sweep * inPad * 0.5);
+
+        // Arrival shockwave: a bright cyan ring blasts outward when a slide
+        // lands, so touching down on a new platform reads as a real impact.
+        float ringR = (1.0 - uArrival) * 4.5;
+        float ring = smoothstep(0.35, 0.0, abs(r - ringR)) * uArrival;
+        col += mix(cyan, vec3(1.0), 0.4) * ring * 2.2;
+        alpha = max(alpha, ring);
 
         gl_FragColor = vec4(col, alpha * fade);
       }

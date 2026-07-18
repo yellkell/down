@@ -35,6 +35,36 @@ export function getGlowTexture(): Texture {
   return glowTexture;
 }
 
+/** Neon text rendered to a transparent canvas, for floor/track decals. */
+export function makeTextTexture(
+  text: string,
+  opts?: { color?: string; width?: number; height?: number }
+): CanvasTexture {
+  const width = opts?.width ?? 1024;
+  const height = opts?.height ?? 256;
+  const color = opts?.color ?? '#29f3ff';
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, width, height);
+  ctx.font = `900 ${Math.floor(height * 0.52)}px "Segoe UI", system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = color;
+  ctx.shadowBlur = height * 0.24;
+  ctx.fillStyle = color;
+  // Two passes to bloom the glow, then a white-hot core for legibility.
+  ctx.fillText(text, width / 2, height / 2);
+  ctx.fillText(text, width / 2, height / 2);
+  ctx.shadowBlur = height * 0.06;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(text, width / 2, height / 2);
+  const texture = new CanvasTexture(canvas);
+  texture.anisotropy = 4;
+  return texture;
+}
+
 /** Additive glow sprite — the poor VR dev's bloom. */
 export function makeGlow(color: number | string, scale: number, opacity = 1): Sprite {
   const material = new SpriteMaterial({

@@ -46,6 +46,10 @@ export class EnvironmentSystem extends createSystem({}) {
     pu.uWarning.value += (game.warning - pu.uWarning.value) * Math.min(1, delta * 6);
     pu.uDanger.value += (game.danger - pu.uDanger.value) * Math.min(1, delta * 8);
 
+    // Arrival shockwave: snap to 1 on landing, then decay over ~0.9s.
+    if (game.arrival > 0) game.arrival = Math.max(0, game.arrival - delta / 0.9);
+    pu.uArrival.value = game.arrival;
+
     // Slide comfort FX.
     const speedRatio = game.slideSpeed / SLIDE_SPEED;
     const vig = env.vignette.uniforms;
