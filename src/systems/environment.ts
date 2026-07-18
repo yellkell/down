@@ -15,6 +15,8 @@ export interface EnvHandles {
   streaks: StreakHandles;
   vignette: VignetteHandles;
   megastructures: Group;
+  /** Hidden until the final drop begins. */
+  finish: Group;
 }
 
 /**

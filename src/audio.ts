@@ -1,31 +1,25 @@
 /**
- * Audio: the original DOWN soundtrack + stingers, played via HTMLAudio
- * (reliable inside WebXR sessions on Quest browser, no unlock quirks
- * beyond the first user gesture, which the BEGIN button provides).
+ * Audio, played via HTMLAudio (reliable inside WebXR sessions on Quest
+ * browser; the BEGIN button click provides the unlock gesture).
+ *
+ * Soundtrack: "Run" on loop. Voice lines reward each slide you survive.
+ * All paths are relative so the game works from a subpath (GitHub Pages).
  */
 const SFX = {
-  begin: '/audio/begin.ogg',
-  awesome: '/audio/awesome.ogg',
-  excellent: '/audio/excellent.ogg',
-  die: '/audio/die.ogg',
-  gameover: '/audio/gameover.ogg',
-  square: '/audio/square.ogg'
+  begin: './audio/begin.ogg',
+  die: './audio/die.ogg',
+  gameover: './audio/gameover.ogg',
+  square: './audio/square.ogg',
+  nice: './audio/nice.wav',
+  perfect: './audio/perfect.wav',
+  welldone: './audio/welldone.wav'
 } as const;
 
 export type SfxName = keyof typeof SFX;
 
-const TRACKS = [
-  '/audio/digital-paradisio.mp3',
-  '/audio/island-circuits.mp3',
-  '/audio/island-pixelio.mp3',
-  '/audio/island-pixels.mp3'
-];
-
 class AudioManager {
   private sfx = new Map<SfxName, HTMLAudioElement>();
-  private tracks: HTMLAudioElement[] = [];
-  private current = 0;
-  private musicOn = false;
+  private music: HTMLAudioElement | null = null;
 
   init(): void {
     (Object.keys(SFX) as SfxName[]).forEach((name) => {
@@ -33,13 +27,10 @@ class AudioManager {
       el.preload = 'auto';
       this.sfx.set(name, el);
     });
-    this.tracks = TRACKS.map((url) => {
-      const el = new Audio(url);
-      el.preload = 'none';
-      el.volume = 0.55;
-      el.addEventListener('ended', () => this.next());
-      return el;
-    });
+    this.music = new Audio('./audio/run.m4a');
+    this.music.preload = 'auto';
+    this.music.loop = true;
+    this.music.volume = 0.6;
   }
 
   play(name: SfxName, volume = 1): void {
@@ -51,24 +42,13 @@ class AudioManager {
   }
 
   startMusic(): void {
-    this.musicOn = true;
-    this.current = 0;
-    const track = this.tracks[0];
-    track.currentTime = 0;
-    void track.play().catch(() => {});
+    if (!this.music) return;
+    this.music.currentTime = 0;
+    void this.music.play().catch(() => {});
   }
 
   stopMusic(): void {
-    this.musicOn = false;
-    this.tracks.forEach((t) => t.pause());
-  }
-
-  private next(): void {
-    if (!this.musicOn) return;
-    this.current = (this.current + 1) % this.tracks.length;
-    const track = this.tracks[this.current];
-    track.currentTime = 0;
-    void track.play().catch(() => {});
+    this.music?.pause();
   }
 }
 

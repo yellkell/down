@@ -199,6 +199,7 @@ export class GameSystem extends createSystem({
     emit('game-reset');
     this.env?.signs.reset();
     this.env?.confetti.stop();
+    if (this.env) this.env.finish.visible = false;
     this.player.position.set(0, PHASE_HEIGHTS[0], 0);
     this.setPanelVisible(this.panels?.end, false);
     this.setPanelVisible(this.panels?.hud, true);
@@ -230,20 +231,24 @@ export class GameSystem extends createSystem({
     const targetY = game.isFinal ? WINNER_HEIGHT : PHASE_HEIGHTS[game.round];
     slide.begin({ targetY, isFinal: game.isFinal });
 
+    // The bottom of the world only materializes once you commit to it.
+    if (game.isFinal && this.env) this.env.finish.visible = true;
+
     // Sign progression: heading to round 2 -> middle sign, round 3 -> bottom.
     this.env?.signs.show(Math.min(game.round, 2));
     this.showWarning(game.isFinal ? 'FINAL DROP' : 'SLIDE', 2);
   }
 
   private onSlideComplete(): void {
+    // Escalating praise: "nice" after the first slide, "perfect" after the second.
+    audio.play(game.round === 1 ? 'nice' : 'perfect');
     game.round += 1;
-    audio.play('excellent');
     this.enterGrid();
   }
 
   private onWin(): void {
     game.phase = 'WIN';
-    audio.play('awesome');
+    audio.play('welldone');
     this.env?.signs.show(3);
     this.player.head.getWorldPosition(this.headWorld);
     this.env?.confetti.start(this.headWorld.clone());

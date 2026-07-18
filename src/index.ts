@@ -62,7 +62,7 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
 }).then((world) => {
   const { scene, player, camera } = world;
 
-  scene.fog = new FogExp2(0x050510, 0.0015);
+  scene.fog = new FogExp2(0x050510, 0.002); // the original's density — the deep world stays hidden until you're in it
   player.position.set(0, PHASE_HEIGHTS[0], 0);
 
   // --- World dressing -----------------------------------------------------
@@ -73,12 +73,16 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   platform.group.position.copy(player.position);
   scene.add(platform.group);
 
-  scene.add(createMegastructures());
+  const city = createMegastructures();
+  scene.add(city);
 
-  // Finish zone sits where the final slide lands.
+  // Finish zone sits where the final slide lands — but stays hidden until
+  // the final drop begins, so the bottom is a mystery from up top.
   const slideRun = (drop: number) => drop / Math.tan(SLIDE_ANGLE);
   const finishZ = -(slideRun(75) + slideRun(75) + slideRun(150));
-  scene.add(createFinishZone(new Vector3(0, WINNER_HEIGHT, finishZ)));
+  const finish = createFinishZone(new Vector3(0, WINNER_HEIGHT, finishZ));
+  finish.visible = false;
+  scene.add(finish);
 
   const signs = new SignBoard();
   player.add(signs.group);
@@ -99,7 +103,8 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     confetti,
     streaks,
     vignette,
-    megastructures: sky.group
+    megastructures: city,
+    finish
   } satisfies EnvHandles;
 
   // --- UI panels (compiled from ui/*.uikitml) -----------------------------

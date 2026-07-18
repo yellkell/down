@@ -13,7 +13,7 @@ const TURBO =
   new URLSearchParams(location.search).has('turbo');
 
 export const GRID_DURATION = TURBO ? 6 : 30; // seconds of dodging per round
-export const SLIDE_ANGLE = 20 * (Math.PI / 180);
+export const SLIDE_ANGLE = 32 * (Math.PI / 180); // steeper than the original 20° — it has to LOOK like a drop
 export const SLIDE_SPEED = 20; // m/s along the slide
 export const SLIDE_ACCEL_TIME = 1.2; // ease-in seconds for comfort
 
@@ -30,7 +30,7 @@ export const PROJECTILE_DESPAWN_Y = 3;
 /** Slide barriers: lane offsets across the 3-lane track. */
 export const LANE_X = [-0.4, 0, 0.4];
 export const BARRIER_SIZE = { w: 0.25, h: 2.4, d: 0.15 };
-export const BARRIER_SPACING = [25, 18, 18]; // per slide (1st, 2nd, final)
+export const BARRIER_SPACING = [20, 15, 15]; // per slide (1st, 2nd, final) — tighter to match the shorter, steeper runs
 
 export const HEAD_RADIUS = 0.12;
 

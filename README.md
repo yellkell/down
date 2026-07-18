@@ -4,10 +4,15 @@ A roomscale VR descent game for the immersive web, rebuilt on Meta's
 [Immersive Web SDK](https://developers.meta.com/horizon/documentation/web/immersive-web-sdk/)
 (IWSDK + Three.js + WebXR).
 
+**Play it:** <https://yellkell.github.io/down/> — deployed from CI on every
+push (the original lives at [`/legacy/`](https://yellkell.github.io/down/legacy/),
+the Christmas sled at [`/vrxmas/`](https://yellkell.github.io/down/vrxmas/)).
+
 You start 300 meters up, standing on a floating neon platform in the void.
 Dodge the glowing shapes that surge up through the grid, survive the round,
-then ride a 20° slide of light down to the next platform. Three rounds, two
-slides, and one final 150-meter victory drop to the finish zone.
+then ride a steep 32° slide of light down to the next platform. Three
+rounds, two slides, and one final 150-meter victory drop to a finish zone
+that stays hidden in the fog until you commit to it.
 
 | Start | Slide | Finish |
 | --- | --- | --- |
@@ -49,7 +54,7 @@ src/
   index.ts          world bootstrap: assets, panels, systems
   constants.ts      all game tuning in one place
   state.ts          shared game state + tiny event bus
-  audio.ts          original soundtrack + stingers (HTMLAudio)
+  audio.ts          "Run" soundtrack, voice lines + stingers (HTMLAudio)
   systems/          ECS systems: game referee, spawner, slide, environment
   env/              the void: sky, platform, track, structures, extras
 ui/                 UIKitML spatial panels (start / HUD / warning / end)
@@ -63,8 +68,10 @@ vrxmas/             a separate little Christmas sled experience
 The original (preserved in [`legacy/`](legacy/)) was a single A-Frame page
 with hand-placed star spheres and copy-pasted slide blocks — a first VR
 project, and it shows in the best way. The remaster keeps its soul (same
-three-phase descent, same timings, same lane patterns, same music and
-signs) and rebuilds everything around it:
+three-phase descent, same round timings, same lane patterns, same sign
+artwork — with the slides steepened from 20° to 32° so the drop looks
+like one, and a new soundtrack, "Run", with voice-line rewards after
+every slide) and rebuilds everything around it:
 
 - **A-Frame → IWSDK**: TypeScript, ECS systems, UIKitML spatial UI panels,
   Vite build, desktop emulator for development.
