@@ -69,6 +69,10 @@ export function createSky(): SkyHandles {
         float horizon = pow(1.0 - abs(d.y), 6.0);
         col += vec3(0.30, 0.05, 0.26) * horizon * 0.55;
 
+        // The whole lower dome glows: light rising off the cloud sea.
+        float below = smoothstep(0.05, -0.45, d.y);
+        col += vec3(0.20, 0.055, 0.21) * below * 0.6;
+
         gl_FragColor = vec4(col, 1.0);
       }
     `
@@ -225,11 +229,11 @@ export function createSky(): SkyHandles {
     group.add(glow);
   });
 
-  // Distant floor of the world — a dark disc far below the finish zone,
-  // so the void has a bottom when you look down.
+  // Distant floor of the world — a deep indigo bowl far below the cloud
+  // sea, so any gap between mist layers still reads as glowing depth.
   const abyss = new Mesh(
     new SphereGeometry(900, 32, 16, 0, Math.PI * 2, Math.PI * 0.82, Math.PI * 0.18),
-    new MeshBasicMaterial({ color: 0x02020a })
+    new MeshBasicMaterial({ color: 0x120826 })
   );
   abyss.position.y = -420;
   group.add(abyss);

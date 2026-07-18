@@ -2,12 +2,107 @@ import {
   AdditiveBlending,
   CanvasTexture,
   Color,
+  RepeatWrapping,
   Sprite,
   SpriteMaterial,
   Texture
 } from '@iwsdk/core';
 
 let glowTexture: Texture | null = null;
+
+/** Tiny deterministic PRNG so baked textures are identical every run. */
+function seededRandom(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 16807) % 2147483647 || 1;
+    return s / 2147483647;
+  };
+}
+
+/**
+ * Lit-window texture for the tower faces, baked once to a canvas so it
+ * mipmaps cleanly — procedural per-pixel grids shimmer badly in VR at
+ * distance; a baked texture stays rock-solid. One tile covers 16m x 24m
+ * of facade: 6 window columns, 8 floors, with real structure — dark
+ * floors, dense floors, warm/cool/neon color mix.
+ */
+export function makeWindowTexture(): CanvasTexture {
+  const w = 256;
+  const h = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, w, h);
+
+  const cols = 6;
+  const rows = 8;
+  const cw = w / cols;
+  const ch = h / rows;
+  const rnd = seededRandom(1979);
+  // Weighted palette: mostly warm sodium/amber, cyan accents, rare magenta.
+  const palette: Array<[string, number]> = [
+    ['#ffb45e', 0.3],
+    ['#ffd9a0', 0.24],
+    ['#7defff', 0.17],
+    ['#29f3ff', 0.12],
+    ['#ff3df2', 0.07],
+    ['#ffffff', 0.1]
+  ];
+  const pick = (): string => {
+    let p = rnd();
+    for (const [color, weight] of palette) {
+      p -= weight;
+      if (p <= 0) return color;
+    }
+    return palette[0][0];
+  };
+
+  for (let r = 0; r < rows; r++) {
+    // Whole floors go dark; others are busy — that's what makes it read
+    // as a lived-in building instead of static.
+    const density = rnd() < 0.22 ? 0.08 : 0.3 + rnd() * 0.55;
+    for (let c = 0; c < cols; c++) {
+      if (rnd() > density) continue;
+      const color = pick();
+      ctx.globalAlpha = 0.5 + rnd() * 0.5;
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 5;
+      ctx.fillRect(c * cw + cw * 0.2, r * ch + ch * 0.24, cw * 0.6, ch * 0.46);
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  const texture = new CanvasTexture(canvas);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+/** Soft multi-lobed cloud puff on a transparent canvas, for mist sprites. */
+export function makeCloudTexture(): CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, size, size);
+  const rnd = seededRandom(777);
+  for (let i = 0; i < 9; i++) {
+    const cx = size * 0.5 + (rnd() - 0.5) * size * 0.45;
+    const cy = size * 0.55 + (rnd() - 0.5) * size * 0.3;
+    const radius = size * (0.12 + rnd() * 0.17);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    g.addColorStop(0, 'rgba(255,255,255,0.42)');
+    g.addColorStop(0.6, 'rgba(255,255,255,0.14)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+  }
+  return new CanvasTexture(canvas);
+}
 
 /** Soft radial glow sprite texture, generated once on a canvas. */
 export function getGlowTexture(): Texture {

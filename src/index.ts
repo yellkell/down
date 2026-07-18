@@ -13,6 +13,7 @@ import {
 
 import { audio } from './audio.js';
 import { PHASE_HEIGHTS, SLIDE_ANGLE, WINNER_HEIGHT } from './constants.js';
+import { createClouds } from './env/clouds.js';
 import { Confetti, SignBoard } from './env/extras.js';
 import { createPlatform } from './env/platform.js';
 import { createSky } from './env/sky.js';
@@ -74,7 +75,10 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   scene.add(platform.group);
 
   const city = createMegastructures();
-  scene.add(city);
+  scene.add(city.group);
+
+  const clouds = createClouds();
+  scene.add(clouds.group);
 
   // Finish zone sits where the final slide lands — but stays hidden until
   // the final drop begins, so the bottom is a mystery from up top.
@@ -103,7 +107,8 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     confetti,
     streaks,
     vignette,
-    megastructures: city,
+    city,
+    clouds,
     finish
   } satisfies EnvHandles;
 

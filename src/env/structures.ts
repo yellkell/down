@@ -15,29 +15,43 @@ import {
   MeshBasicMaterial,
   OctahedronGeometry,
   Quaternion,
+  ShaderMaterial,
   TetrahedronGeometry,
   TorusGeometry,
   Vector3
 } from '@iwsdk/core';
 
 import { NEON, OBSTACLE_COLORS } from '../constants.js';
-import { makeGlow } from './fx.js';
+import { makeGlow, makeWindowTexture, NOISE_GLSL } from './fx.js';
+
+export interface CityHandles {
+  group: Group;
+  uniforms: { uTime: { value: number } };
+}
 
 /**
- * Monolithic dark towers lining the descent corridor — one instanced mesh
- * for the fills, one merged line-set for their neon edge trim, plus beacon
- * glows on the tallest roofs. Replaces the four lonely boxes of the original.
+ * The mist band: towers start dissolving at MIST_TOP and are fully melted
+ * into haze by MIST_FULL — just above the cloud-sea disc, so no geometry
+ * ever hard-intersects the sea.
  */
-export function createMegastructures(): Group {
+const MIST_TOP = -175;
+const MIST_FULL = -245;
+/** Haze the tower bases melt into — must match the cloud sea's glow. */
+const HAZE_COLOR = [0.11, 0.04, 0.14] as const;
+
+/**
+ * The skyline: dark towers lining the descent corridor, their faces alive with
+ * procedurally-lit neon windows, rising out of the cloud sea. One instanced
+ * mesh drives all of them via a window-grid shader; a merged line-set adds edge
+ * trim and beacons crown the tallest roofs.
+ */
+export function createMegastructures(): CityHandles {
   const group = new Group();
-  const COUNT = 42;
+  const COUNT = 60;
+  const uniforms = { uTime: { value: 0 } };
 
   const boxGeometry = new BoxGeometry(1, 1, 1);
-  const fill = new InstancedMesh(
-    boxGeometry,
-    new MeshBasicMaterial({ color: 0x05050f }),
-    COUNT
-  );
+  const fill = new InstancedMesh(boxGeometry, makeWindowMaterial(uniforms), COUNT);
 
   const edgePositions: number[] = [];
   const edgeSource = new EdgesGeometry(boxGeometry);
@@ -52,11 +66,13 @@ export function createMegastructures(): Group {
 
   for (let i = 0; i < COUNT; i++) {
     const side = i % 2 === 0 ? -1 : 1;
-    const x = side * (130 + rng() * 380);
-    const z = 60 - rng() * 1100;
-    const height = 90 + rng() * 320;
-    const width = 22 + rng() * 46;
-    const baseY = -260 + rng() * 60;
+    // Two depth bands: a near wall and a taller far wall, for a layered skyline.
+    const near = rng() < 0.5;
+    const x = side * (near ? 90 + rng() * 150 : 260 + rng() * 320);
+    const z = 90 - rng() * 1500;
+    const height = (near ? 150 : 240) + rng() * 260;
+    const width = 24 + rng() * 52;
+    const baseY = -300 + rng() * 30; // bases sink into the cloud sea (~-200)
     const rotY = rng() * Math.PI;
 
     quaternion.setFromAxisAngle(up, rotY);
@@ -65,18 +81,19 @@ export function createMegastructures(): Group {
     matrix.compose(position, quaternion, scale);
     fill.setMatrixAt(i, matrix);
 
-    // Bake this instance's edges into one static line geometry.
+    // Bake this instance's edges into one static line geometry. Clamp the
+    // verticals at the mist top so no crisp line runs down into the haze.
     const v = new Vector3();
     for (let j = 0; j < edgeArray.length; j += 3) {
       v.set(edgeArray[j], edgeArray[j + 1], edgeArray[j + 2]).applyMatrix4(matrix);
-      edgePositions.push(v.x, v.y, v.z);
+      edgePositions.push(v.x, Math.max(v.y, -172), v.z);
     }
 
-    if (height > 280) {
-      beacons.push(new Vector3(x, baseY + height + 6, z));
-    }
+    const top = baseY + height;
+    if (top > 120) beacons.push(new Vector3(x, top + 6, z));
   }
   fill.instanceMatrix.needsUpdate = true;
+  fill.frustumCulled = false;
   group.add(fill);
 
   const edgeGeometry = new BufferGeometry();
@@ -89,20 +106,111 @@ export function createMegastructures(): Group {
     new LineBasicMaterial({
       color: NEON.purple,
       transparent: true,
-      opacity: 0.28,
+      opacity: 0.22,
       blending: AdditiveBlending,
       depthWrite: false
     })
   );
+  edges.frustumCulled = false;
   group.add(edges);
 
   beacons.forEach((p, i) => {
-    const glow = makeGlow(i % 2 === 0 ? NEON.red : NEON.cyan, 10, 0.55);
+    const glow = makeGlow(i % 2 === 0 ? NEON.red : NEON.cyan, 9, 0.6);
     glow.position.copy(p);
     group.add(glow);
   });
 
-  return group;
+  // Colored volumetric haze pooled among the towers — the city's own glow.
+  const hazeColors = [NEON.magenta, NEON.cyan, NEON.purple, NEON.amber];
+  const hrng = mulberry32(555);
+  for (let i = 0; i < 14; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const haze = makeGlow(hazeColors[i % hazeColors.length], 120 + hrng() * 160, 0.12);
+    haze.position.set(
+      side * (110 + hrng() * 360),
+      -170 + hrng() * 240,
+      50 - hrng() * 1400
+    );
+    group.add(haze);
+  }
+
+  return { group, uniforms };
+}
+
+/**
+ * Facade shader for the instanced towers. Samples the baked, mipmapped
+ * window texture (stable in VR — no per-pixel procedural shimmer) with UVs
+ * in real-world metres derived from each instance's scale, breathes the
+ * city's light with slow low-frequency noise, and melts the tower bases
+ * into haze so they dissolve into the cloud sea instead of intersecting it.
+ */
+function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: {
+      ...uniforms,
+      uWindows: { value: makeWindowTexture() },
+      uMistTop: { value: MIST_TOP },
+      uMistFull: { value: MIST_FULL },
+      uHaze: { value: [...HAZE_COLOR] }
+    },
+    vertexShader: /* glsl */ `
+      varying vec3 vLocal;
+      varying vec3 vNormalL;
+      varying vec3 vScale;
+      varying vec3 vWorld;
+      void main() {
+        vLocal = position;
+        vNormalL = normal;
+        vScale = vec3(
+          length(instanceMatrix[0].xyz),
+          length(instanceMatrix[1].xyz),
+          length(instanceMatrix[2].xyz)
+        );
+        vec4 world = modelMatrix * instanceMatrix * vec4(position, 1.0);
+        vWorld = world.xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      varying vec3 vLocal;
+      varying vec3 vNormalL;
+      varying vec3 vScale;
+      varying vec3 vWorld;
+      uniform float uTime;
+      uniform sampler2D uWindows;
+      uniform float uMistTop;
+      uniform float uMistFull;
+      uniform vec3 uHaze;
+      ${NOISE_GLSL}
+
+      void main() {
+        vec3 an = abs(vNormalL);
+        vec3 body = vec3(0.012, 0.016, 0.045);
+        vec3 col = body;
+
+        if (an.y < 0.5) {
+          // Facade coordinates in real-world metres -> one texture tile
+          // per 16m x 24m of wall.
+          vec2 wm = (an.x > an.z)
+            ? vec2(vLocal.z * vScale.z, (vLocal.y + 0.5) * vScale.y)
+            : vec2(vLocal.x * vScale.x, (vLocal.y + 0.5) * vScale.y);
+          vec4 win = texture2D(uWindows, wm / vec2(16.0, 24.0));
+
+          // Slow "city breathing" — low-frequency only, so nothing shimmers.
+          float breathe = 0.78 + 0.22 * vnoise(vec3(vWorld.xz * 0.012, uTime * 0.06));
+          col += win.rgb * win.a * 1.6 * breathe;
+        } else {
+          col = body * 1.5; // roof caps read slightly lighter
+        }
+
+        // Melt into the mist: fully haze-colored before the cloud sea.
+        float t = clamp((uMistTop - vWorld.y) / (uMistTop - uMistFull), 0.0, 1.0);
+        t = t * t * (3.0 - 2.0 * t);
+        col = mix(col, uHaze, t);
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `
+  });
 }
 
 /**

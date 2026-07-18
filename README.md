@@ -76,8 +76,10 @@ every slide) and rebuilds everything around it:
 
 - **A-Frame → IWSDK**: TypeScript, ECS systems, UIKitML spatial UI panels,
   Vite build, desktop emulator for development.
-- **25 star spheres → a sky**: 2,600 twinkling GPU stars, an FBM nebula
-  dome, a ringed gas giant, and a skyline of 42 edge-lit megastructures.
+- **25 star spheres → a world**: 2,600 twinkling GPU stars, an FBM nebula
+  dome, a ringed gas giant, and a cyberpunk skyline of 60 towers alive
+  with baked lit windows, their bases dissolving into a luminous cloud
+  sea so the city has no visible bottom.
 - **Static slide décor → generated tracks**: each slide builds its ribbon
   of light where you actually ride, with flowing chevrons, lane lines, and
   energy hoops to fly through.
