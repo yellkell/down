@@ -158,6 +158,7 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
       varying vec3 vNormalL;
       varying vec3 vScale;
       varying vec3 vWorld;
+      varying vec3 vRand;
       void main() {
         vLocal = position;
         vNormalL = normal;
@@ -165,6 +166,14 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
           length(instanceMatrix[0].xyz),
           length(instanceMatrix[1].xyz),
           length(instanceMatrix[2].xyz)
+        );
+        // Three stable per-instance randoms from the tower's footprint —
+        // they de-uniform the windows: offset, scale, and brightness.
+        vec2 fp = instanceMatrix[3].xz;
+        vRand = vec3(
+          fract(sin(dot(fp, vec2(12.9898, 78.233))) * 43758.5453),
+          fract(sin(dot(fp, vec2(39.3468, 11.135))) * 24634.6345),
+          fract(sin(dot(fp, vec2(73.156, 52.235))) * 12345.6789)
         );
         vec4 world = modelMatrix * instanceMatrix * vec4(position, 1.0);
         vWorld = world.xyz;
@@ -176,6 +185,7 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
       varying vec3 vNormalL;
       varying vec3 vScale;
       varying vec3 vWorld;
+      varying vec3 vRand;
       uniform float uTime;
       uniform sampler2D uWindows;
       uniform float uMistTop;
@@ -189,16 +199,27 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
         vec3 col = body;
 
         if (an.y < 0.5) {
-          // Facade coordinates in real-world metres -> one texture tile
-          // per 16m x 24m of wall.
+          // Facade coordinates in real-world metres.
           vec2 wm = (an.x > an.z)
             ? vec2(vLocal.z * vScale.z, (vLocal.y + 0.5) * vScale.y)
             : vec2(vLocal.x * vScale.x, (vLocal.y + 0.5) * vScale.y);
-          vec4 win = texture2D(uWindows, wm / vec2(16.0, 24.0));
+
+          // Per-tower window scale (floor heights differ building to
+          // building), per-tower + per-face crop offset so no two towers
+          // show the same patch of the atlas.
+          float tileW = mix(28.0, 42.0, vRand.y);
+          vec2 uv = wm / vec2(tileW, tileW * 1.4);
+          uv += vec2(vRand.x * 5.13, vRand.z * 3.71);
+          if (an.x > an.z) uv += vec2(0.37, 0.19);
+          vec4 win = texture2D(uWindows, uv);
 
           // Slow "city breathing" — low-frequency only, so nothing shimmers.
           float breathe = 0.78 + 0.22 * vnoise(vec3(vWorld.xz * 0.012, uTime * 0.06));
-          col += win.rgb * win.a * 1.6 * breathe;
+
+          // Some towers blaze, some sit nearly dark.
+          float towerLit = 0.25 + 1.3 * pow(vRand.z, 1.7);
+
+          col += win.rgb * win.a * 1.6 * breathe * towerLit;
         } else {
           col = body * 1.5; // roof caps read slightly lighter
         }

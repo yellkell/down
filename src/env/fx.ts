@@ -22,32 +22,34 @@ function seededRandom(seed: number): () => number {
 /**
  * Lit-window texture for the tower faces, baked once to a canvas so it
  * mipmaps cleanly — procedural per-pixel grids shimmer badly in VR at
- * distance; a baked texture stays rock-solid. One tile covers 16m x 24m
- * of facade: 6 window columns, 8 floors, with real structure — dark
- * floors, dense floors, warm/cool/neon color mix.
+ * distance; a baked texture stays rock-solid. 12 columns x 16 floors per
+ * tile, built the way real skylines light up: windows in clustered runs
+ * (offices share lights), whole floors dark, occasional fully-lit strip
+ * floors, and each floor holding a dominant color temperature. Towers
+ * then sample this at per-instance offsets/scales so no two look alike.
  */
 export function makeWindowTexture(): CanvasTexture {
-  const w = 256;
-  const h = 256;
+  const w = 512;
+  const h = 512;
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, w, h);
 
-  const cols = 6;
-  const rows = 8;
+  const cols = 12;
+  const rows = 16;
   const cw = w / cols;
   const ch = h / rows;
   const rnd = seededRandom(1979);
   // Weighted palette: mostly warm sodium/amber, cyan accents, rare magenta.
   const palette: Array<[string, number]> = [
-    ['#ffb45e', 0.3],
+    ['#ffb45e', 0.32],
     ['#ffd9a0', 0.24],
-    ['#7defff', 0.17],
-    ['#29f3ff', 0.12],
-    ['#ff3df2', 0.07],
-    ['#ffffff', 0.1]
+    ['#7defff', 0.16],
+    ['#29f3ff', 0.11],
+    ['#ff3df2', 0.06],
+    ['#ffffff', 0.11]
   ];
   const pick = (): string => {
     let p = rnd();
@@ -58,18 +60,48 @@ export function makeWindowTexture(): CanvasTexture {
     return palette[0][0];
   };
 
+  const drawPane = (c: number, r: number, color: string, alpha: number): void => {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 4;
+    ctx.fillRect(c * cw + cw * 0.18, r * ch + ch * 0.24, cw * 0.64, ch * 0.46);
+  };
+
   for (let r = 0; r < rows; r++) {
-    // Whole floors go dark; others are busy — that's what makes it read
-    // as a lived-in building instead of static.
-    const density = rnd() < 0.22 ? 0.08 : 0.3 + rnd() * 0.55;
-    for (let c = 0; c < cols; c++) {
-      if (rnd() > density) continue;
-      const color = pick();
-      ctx.globalAlpha = 0.5 + rnd() * 0.5;
-      ctx.fillStyle = color;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 5;
-      ctx.fillRect(c * cw + cw * 0.2, r * ch + ch * 0.24, cw * 0.6, ch * 0.46);
+    const mode = rnd();
+    // Each floor leans toward one color temperature — offices share lighting.
+    const floorColor = pick();
+
+    if (mode < 0.16) {
+      // Dark floor: at most a lone late-night window.
+      if (rnd() < 0.3) drawPane(Math.floor(rnd() * cols), r, pick(), 0.5);
+      continue;
+    }
+    if (mode < 0.27) {
+      // Fully lit strip floor — one continuous band of light.
+      ctx.globalAlpha = 0.55 + rnd() * 0.3;
+      ctx.fillStyle = floorColor;
+      ctx.shadowColor = floorColor;
+      ctx.shadowBlur = 6;
+      ctx.fillRect(cw * 0.1, r * ch + ch * 0.26, w - cw * 0.2, ch * 0.42);
+      continue;
+    }
+
+    // Normal floor: windows light in clustered runs of 1-4.
+    const density = 0.18 + rnd() * 0.42;
+    let c = 0;
+    while (c < cols) {
+      if (rnd() < density) {
+        const run = 1 + Math.floor(rnd() * rnd() * 4);
+        const runColor = rnd() < 0.75 ? floorColor : pick();
+        for (let k = 0; k < run && c + k < cols; k++) {
+          drawPane(c + k, r, runColor, 0.45 + rnd() * 0.55);
+        }
+        c += run + 1;
+      } else {
+        c++;
+      }
     }
   }
   ctx.globalAlpha = 1;
