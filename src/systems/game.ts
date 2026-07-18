@@ -1,0 +1,394 @@
+import {
+  createSystem,
+  eq,
+  PanelDocument,
+  PanelUI,
+  UIKit,
+  UIKitDocument,
+  Vector3,
+  VisibilityState,
+  type Entity
+} from '@iwsdk/core';
+
+import { audio } from '../audio.js';
+import {
+  BARRIER_SIZE,
+  GRID_DURATION,
+  HEAD_RADIUS,
+  KILL_ZONE,
+  PHASE_HEIGHTS,
+  TOTAL_ROUNDS,
+  WINNER_HEIGHT
+} from '../constants.js';
+import { emit, game, on, resetGameState } from '../state.js';
+import type { EnvHandles } from './environment.js';
+import { GridSpawnerSystem } from './spawner.js';
+import { SlideSystem } from './slide.js';
+
+export interface PanelEntities {
+  start: Entity;
+  hud: Entity;
+  end: Entity;
+  warn: Entity;
+}
+
+/**
+ * The referee: phase state machine, collision detection, HUD text,
+ * warnings, audio stingers, and the win/lose panels.
+ */
+export class GameSystem extends createSystem({
+  startPanel: {
+    required: [PanelUI, PanelDocument],
+    where: [eq(PanelUI, 'config', './ui/start.json')]
+  },
+  hudPanel: {
+    required: [PanelUI, PanelDocument],
+    where: [eq(PanelUI, 'config', './ui/hud.json')]
+  },
+  endPanel: {
+    required: [PanelUI, PanelDocument],
+    where: [eq(PanelUI, 'config', './ui/end.json')]
+  },
+  warnPanel: {
+    required: [PanelUI, PanelDocument],
+    where: [eq(PanelUI, 'config', './ui/warn.json')]
+  }
+}) {
+  private headWorld = new Vector3();
+  private projectilePos = new Vector3();
+
+  // HUD element refs (resolved once each panel's document loads).
+  private hudRound: UIKit.Text | null = null;
+  private hudTimer: UIKit.Text | null = null;
+  private hudAlt: UIKit.Text | null = null;
+  private hudStatus: UIKit.Text | null = null;
+  private warnText: UIKit.Text | null = null;
+  private endTitle: UIKit.Text | null = null;
+  private endStats: UIKit.Text | null = null;
+
+  private hudCache: Record<string, string> = {};
+  private warnTimer = 0;
+  private introTimer = 0;
+  private beepAt = 0;
+  private started = false;
+
+  private get panels(): PanelEntities {
+    return this.globals.panels as PanelEntities;
+  }
+
+  private get env(): EnvHandles {
+    return this.globals.env as EnvHandles;
+  }
+
+  init(): void {
+    this.wireStartPanel();
+    this.wireHudPanel();
+    this.wireEndPanel();
+    this.wireWarnPanel();
+
+    on('slide-complete', () => this.onSlideComplete());
+    on('final-slide-complete', () => this.onWin());
+  }
+
+  // -- Panel wiring ---------------------------------------------------------
+
+  private getDocument(entity: Entity): UIKitDocument | null {
+    return (PanelDocument.data.document[entity.index] as UIKitDocument) ?? null;
+  }
+
+  private wireStartPanel(): void {
+    this.queries.startPanel.subscribe('qualify', (entity) => {
+      const doc = this.getDocument(entity);
+      if (!doc) return;
+      const beginBtn = doc.getElementById('begin-btn') as UIKit.Text;
+      beginBtn?.addEventListener('click', () => this.startGame());
+
+      const xrBtn = doc.getElementById('xr-btn') as UIKit.Text;
+      xrBtn?.addEventListener('click', () => {
+        if (this.world.visibilityState.value === VisibilityState.NonImmersive) {
+          this.world.launchXR();
+        } else {
+          this.world.exitXR();
+        }
+      });
+      this.world.visibilityState.subscribe((state) => {
+        xrBtn?.setProperties({
+          text:
+            state === VisibilityState.NonImmersive
+              ? 'ENTER VR'
+              : 'EXIT TO BROWSER'
+        });
+      });
+    });
+  }
+
+  private wireHudPanel(): void {
+    this.queries.hudPanel.subscribe('qualify', (entity) => {
+      const doc = this.getDocument(entity);
+      if (!doc) return;
+      this.hudRound = doc.getElementById('round-label') as UIKit.Text;
+      this.hudTimer = doc.getElementById('timer-label') as UIKit.Text;
+      this.hudAlt = doc.getElementById('alt-label') as UIKit.Text;
+      this.hudStatus = doc.getElementById('status-label') as UIKit.Text;
+    });
+  }
+
+  private wireEndPanel(): void {
+    this.queries.endPanel.subscribe('qualify', (entity) => {
+      const doc = this.getDocument(entity);
+      if (!doc) return;
+      this.endTitle = doc.getElementById('end-title') as UIKit.Text;
+      this.endStats = doc.getElementById('end-stats') as UIKit.Text;
+      const retryBtn = doc.getElementById('retry-btn') as UIKit.Text;
+      retryBtn?.addEventListener('click', () => this.retry());
+    });
+  }
+
+  private wireWarnPanel(): void {
+    this.queries.warnPanel.subscribe('qualify', (entity) => {
+      const doc = this.getDocument(entity);
+      if (!doc) return;
+      this.warnText = doc.getElementById('warn-text') as UIKit.Text;
+    });
+  }
+
+  private setPanelVisible(entity: Entity | undefined, visible: boolean): void {
+    if (!entity) return;
+    if (entity.object3D) entity.object3D.visible = visible;
+    // ScreenSpace can re-parent the UIKit document out of our object3D,
+    // so toggle the document group too.
+    const doc = this.getDocument(entity);
+    if (doc) doc.visible = visible;
+  }
+
+  private setHud(key: 'round' | 'timer' | 'alt' | 'status', value: string): void {
+    if (this.hudCache[key] === value) return;
+    this.hudCache[key] = value;
+    const el =
+      key === 'round'
+        ? this.hudRound
+        : key === 'timer'
+          ? this.hudTimer
+          : key === 'alt'
+            ? this.hudAlt
+            : this.hudStatus;
+    el?.setProperties({ text: value });
+  }
+
+  private showWarning(text: string, seconds: number): void {
+    this.warnText?.setProperties({ text });
+    this.setPanelVisible(this.panels?.warn, true);
+    this.warnTimer = seconds;
+  }
+
+  // -- Phase transitions ----------------------------------------------------
+
+  private startGame(): void {
+    if (this.started) return;
+    this.started = true;
+    audio.play('begin');
+    window.setTimeout(() => audio.startMusic(), 400);
+    this.setPanelVisible(this.panels?.start, false);
+    this.setPanelVisible(this.panels?.hud, true);
+    this.enterGrid();
+    emit('game-start');
+  }
+
+  private retry(): void {
+    resetGameState();
+    emit('game-reset');
+    this.env?.signs.reset();
+    this.env?.confetti.stop();
+    this.player.position.set(0, PHASE_HEIGHTS[0], 0);
+    this.setPanelVisible(this.panels?.end, false);
+    this.setPanelVisible(this.panels?.hud, true);
+    this.hudCache = {};
+    audio.play('begin');
+    audio.startMusic();
+    this.enterGrid();
+  }
+
+  private enterGrid(): void {
+    game.phase = 'GRID';
+    game.timeInPhase = 0;
+    game.warning = 0;
+    this.beepAt = 3;
+    this.introTimer = 2.5;
+    this.showWarning('LOOK DOWN', 2.5);
+    emit('grid-start');
+  }
+
+  private enterSlide(): void {
+    game.phase = 'SLIDE';
+    game.timeInPhase = 0;
+    game.warning = 0;
+    game.danger = 0;
+    game.isFinal = game.round >= TOTAL_ROUNDS;
+
+    const slide = this.world.getSystem(SlideSystem);
+    if (!slide) return;
+    const targetY = game.isFinal ? WINNER_HEIGHT : PHASE_HEIGHTS[game.round];
+    slide.begin({ targetY, isFinal: game.isFinal });
+
+    // Sign progression: heading to round 2 -> middle sign, round 3 -> bottom.
+    this.env?.signs.show(Math.min(game.round, 2));
+    this.showWarning(game.isFinal ? 'FINAL DROP' : 'SLIDE', 2);
+  }
+
+  private onSlideComplete(): void {
+    game.round += 1;
+    audio.play('excellent');
+    this.enterGrid();
+  }
+
+  private onWin(): void {
+    game.phase = 'WIN';
+    audio.play('awesome');
+    this.env?.signs.show(3);
+    this.player.head.getWorldPosition(this.headWorld);
+    this.env?.confetti.start(this.headWorld.clone());
+
+    this.endTitle?.setProperties({ text: 'YOU MADE IT!' });
+    this.endStats?.setProperties({
+      text: `300M DESCENDED  ·  ${this.formatTime(game.runTime)}`
+    });
+    this.setPanelVisible(this.panels?.hud, false);
+    this.setPanelVisible(this.panels?.warn, false);
+    this.setPanelVisible(this.panels?.end, true);
+  }
+
+  private gameOver(): void {
+    game.phase = 'GAME_OVER';
+    audio.play('die');
+    window.setTimeout(() => audio.play('gameover'), 250);
+    audio.stopMusic();
+    emit('game-over');
+
+    const altitude = Math.round(this.player.position.y);
+    this.endTitle?.setProperties({ text: 'GAME OVER' });
+    this.endStats?.setProperties({
+      text: `ROUND ${game.round}/${TOTAL_ROUNDS}  ·  ALT ${altitude}M  ·  ${this.formatTime(game.runTime)}`
+    });
+    this.setPanelVisible(this.panels?.hud, false);
+    this.setPanelVisible(this.panels?.warn, false);
+    this.setPanelVisible(this.panels?.end, true);
+  }
+
+  private formatTime(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  // -- Per-frame ------------------------------------------------------------
+
+  update(delta: number): void {
+    if (game.phase === 'START' || game.phase === 'WIN' || game.phase === 'GAME_OVER') {
+      return;
+    }
+
+    game.runTime += delta;
+    game.timeInPhase += delta;
+
+    if (this.warnTimer > 0) {
+      this.warnTimer -= delta;
+      if (this.warnTimer <= 0) this.setPanelVisible(this.panels?.warn, false);
+    }
+    if (this.introTimer > 0) this.introTimer -= delta;
+
+    this.player.head.getWorldPosition(this.headWorld);
+    this.setHud('alt', `ALT ${Math.round(this.player.position.y - WINNER_HEIGHT)}M`);
+
+    if (game.phase === 'GRID') {
+      this.updateGrid(delta);
+    } else if (game.phase === 'SLIDE') {
+      this.updateSlide();
+    }
+  }
+
+  private updateGrid(delta: number): void {
+    const remaining = Math.max(0, GRID_DURATION - game.timeInPhase);
+    this.setHud('round', `ROUND ${game.round}/${TOTAL_ROUNDS}`);
+    this.setHud('timer', remaining.toFixed(0));
+
+    const spawner = this.world.getSystem(GridSpawnerSystem);
+
+    // Kill-zone proximity -> danger glow + status nag.
+    const dx = Math.abs(this.headWorld.x - this.player.position.x);
+    const dz = Math.abs(this.headWorld.z - this.player.position.z);
+    const edge = Math.max(dx, dz);
+    game.danger = Math.min(1, Math.max(0, (edge - 0.55) / (KILL_ZONE / 2 - 0.55)));
+
+    if (remaining <= 3 && remaining > 0) {
+      // Slide incoming: clear the field, pulse the deck, beep the countdown.
+      game.warning = 1;
+      this.setHud('status', game.round >= TOTAL_ROUNDS ? 'FINAL DROP INCOMING' : 'SLIDE INCOMING');
+      spawner?.deactivate();
+      if (remaining <= this.beepAt) {
+        audio.play('square', 0.7);
+        this.beepAt -= 1;
+      }
+    } else if (game.danger > 0.55) {
+      this.setHud('status', 'STAY ON THE GRID');
+    } else if (this.introTimer > 0) {
+      this.setHud('status', 'DODGE WHAT RISES');
+    } else {
+      this.setHud('status', '');
+    }
+
+    if (game.timeInPhase >= GRID_DURATION) {
+      this.enterSlide();
+      return;
+    }
+
+    // Desktop browser = spectator/attract mode: nothing can kill a viewer
+    // who has no body to dodge with. All collisions live in VR only.
+    if (this.visibilityState.value === VisibilityState.NonImmersive) return;
+
+    // Collisions: head vs rising shapes, head vs kill zone.
+    if (spawner) {
+      if (game.timeInPhase > 0.5 && spawner.isOutsideKillZone(this.headWorld)) {
+        this.gameOver();
+        return;
+      }
+      for (const projectile of spawner.getProjectiles()) {
+        projectile.group.getWorldPosition(this.projectilePos);
+        if (
+          this.headWorld.distanceTo(this.projectilePos) <
+          HEAD_RADIUS + projectile.radius
+        ) {
+          this.gameOver();
+          return;
+        }
+      }
+    }
+  }
+
+  private updateSlide(): void {
+    this.setHud('round', game.isFinal ? 'FINAL DROP' : `ROUND ${game.round}/${TOTAL_ROUNDS}`);
+    this.setHud('timer', '▼');
+    this.setHud('status', 'LEAN BETWEEN THE BARRIERS');
+
+    if (this.visibilityState.value === VisibilityState.NonImmersive) return;
+
+    const slide = this.world.getSystem(SlideSystem);
+    if (!slide) return;
+
+    const halfW = BARRIER_SIZE.w / 2 + 0.05;
+    const halfH = BARRIER_SIZE.h / 2;
+    const halfD = BARRIER_SIZE.d / 2 + 0.05;
+    for (const barrier of slide.getBarriers()) {
+      const dx = Math.abs(this.headWorld.x - barrier.position.x);
+      const dy = Math.abs(this.headWorld.y - barrier.position.y);
+      const dz = Math.abs(this.headWorld.z - barrier.position.z);
+      if (
+        dx < halfW + HEAD_RADIUS &&
+        dy < halfH + HEAD_RADIUS &&
+        dz < halfD + HEAD_RADIUS
+      ) {
+        this.gameOver();
+        return;
+      }
+    }
+  }
+}

@@ -1,182 +1,137 @@
-<!DOCTYPE html>
-<html>
-
-<head>
-  <meta charset="utf-8">
-  <title>DOWN</title>
-  <meta name="description" content="DOWN - VR Descent Game">
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-  <script src="js/visuals.js"></script>
-  <script src="js/scenery.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/grid-spawner.js"></script>
-  <script src="js/slide-mechanic.js"></script>
-</head>
-
-<body>
-  <a-scene background="color: #000005" fog="type: exponential; color: #050510; density: 0.002" game-manager grid-spawner
-    slide-mechanic scenery>
-
-    <!-- Lighting -->
-    <a-entity light="type: ambient; color: #111"></a-entity>
-    <a-entity light="type: directional; color: #ffffff; intensity: 0.3" position="-1 2 1"></a-entity>
-    <a-entity light="type: point; color: #ff00ff; intensity: 1; distance: 300" position="50 100 -200"></a-entity>
-    <a-entity light="type: point; color: #00ffff; intensity: 1; distance: 300" position="-50 50 -300"></a-entity>
-
-    <!-- SPACE SKYBOX -->
-    <a-sky color="#000005" src=""></a-sky>
-
-    <!-- Star Field - Many small glowing spheres -->
-    <a-entity id="starfield">
-      <!-- Layer 1: Distant small stars -->
-      <a-sphere position="100 200 -500" radius="0.5"
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="-150 180 -400" radius="0.3"
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="200 250 -600" radius="0.4"
-        material="color: #aaccff; emissive: #aaccff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="-80 300 -700" radius="0.6"
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="300 150 -800" radius="0.3"
-        material="color: #ffccaa; emissive: #ffccaa; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="-200 280 -550" radius="0.5"
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="50 350 -900" radius="0.4"
-        material="color: #aaddff; emissive: #aaddff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="-300 200 -650" radius="0.3"
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="180 320 -750" radius="0.5"
-        material="color: #ffaacc; emissive: #ffaacc; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="-120 400 -850" radius="0.4"
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="250 180 -450" radius="0.3"
-        material="color: #ccffaa; emissive: #ccffaa; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="-50 220 -520" radius="0.5"
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="120 280 -680" radius="0.4"
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="-180 350 -780" radius="0.3"
-        material="color: #aaaaff; emissive: #aaaaff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="80 400 -950" radius="0.6"
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <!-- More stars scattered around -->
-      <a-sphere position="-400 150 -300" radius="0.4"
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="400 220 -350" radius="0.3"
-        material="color: #ffddaa; emissive: #ffddaa; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="-350 320 -420" radius="0.5"
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="320 380 -480" radius="0.4"
-        material="color: #aaccff; emissive: #aaccff; emissiveIntensity: 2; shader: flat"></a-sphere>
-      <a-sphere position="-280 420 -560" radius="0.3"
-        material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 2; shader: flat"></a-sphere>
-    </a-entity>
-
-    <!-- Nebula clouds - distant colored fog -->
-    <a-sphere position="500 100 -1000" radius="200"
-      material="color: #330066; opacity: 0.15; transparent: true; shader: flat"></a-sphere>
-    <a-sphere position="-400 150 -900" radius="150"
-      material="color: #003366; opacity: 0.12; transparent: true; shader: flat"></a-sphere>
-    <a-sphere position="0 200 -1200" radius="250"
-      material="color: #660033; opacity: 0.1; transparent: true; shader: flat"></a-sphere>
-
-    <!-- Player Rig - Starts HIGH (Y=150) -->
-    <a-entity id="rig" position="0 150 0">
-      <a-camera id="camera" position="0 1.6 0" look-controls wasd-controls></a-camera>
-      <!-- VR Controllers with laser pointers -->
-      <a-entity id="left-hand" oculus-touch-controls="hand: left" laser-controls="hand: left"
-        raycaster="objects: .clickable; far: 20"></a-entity>
-      <a-entity id="right-hand" oculus-touch-controls="hand: right" laser-controls="hand: right"
-        raycaster="objects: .clickable; far: 20"></a-entity>
-    </a-entity>
-
-    <!-- Grid Floor - Follows player -->
-    <a-entity id="grid-floor" position="0 150 0"></a-entity>
-
-    <!-- SLIDE MADE OF HUGE DIAGONAL BLOCKS -->
-    <a-entity id="the-slide" position="0 75 -300" rotation="-20 0 0">
-
-      <!-- Giant diagonal blocks forming the slide surface -->
-      <!-- Row 1 -->
-      <a-box width="3" height="0.5" depth="30" position="-4 0 -30" rotation="0 0 -15"
-        material="color: #050510; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-      <a-box width="3" height="0.5" depth="30" position="0 -0.2 -30"
-        material="color: #080815; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-      <a-box width="3" height="0.5" depth="30" position="4 0 -30" rotation="0 0 15"
-        material="color: #050510; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-
-      <!-- Row 2 -->
-      <a-box width="3" height="0.5" depth="30" position="-4 0 -60" rotation="0 0 15"
-        material="color: #080815; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-      <a-box width="3" height="0.5" depth="30" position="0 -0.2 -60"
-        material="color: #050510; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-      <a-box width="3" height="0.5" depth="30" position="4 0 -60" rotation="0 0 -15"
-        material="color: #080815; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-
-      <!-- Row 3 -->
-      <a-box width="3" height="0.5" depth="30" position="-4 0 -90" rotation="0 0 -10"
-        material="color: #050510; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-      <a-box width="3" height="0.5" depth="30" position="0 -0.2 -90"
-        material="color: #080815; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-      <a-box width="3" height="0.5" depth="30" position="4 0 -90" rotation="0 0 10"
-        material="color: #050510; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-
-      <!-- Row 4 -->
-      <a-box width="3" height="0.5" depth="30" position="-4 0 -120" rotation="0 0 20"
-        material="color: #080815; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-      <a-box width="3" height="0.5" depth="30" position="0 -0.2 -120"
-        material="color: #050510; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-      <a-box width="3" height="0.5" depth="30" position="4 0 -120" rotation="0 0 -20"
-        material="color: #080815; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-
-      <!-- Continue pattern... -->
-      <a-box width="3" height="0.5" depth="30" position="-4 0 -150" rotation="0 0 -5"
-        material="color: #050510; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-      <a-box width="3" height="0.5" depth="30" position="0 -0.2 -150"
-        material="color: #080815; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-      <a-box width="3" height="0.5" depth="30" position="4 0 -150" rotation="0 0 5"
-        material="color: #050510; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-
-      <a-box width="3" height="0.5" depth="30" position="-4 0 -180" rotation="0 0 12"
-        material="color: #080815; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-      <a-box width="3" height="0.5" depth="30" position="0 -0.2 -180"
-        material="color: #050510; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-      <a-box width="3" height="0.5" depth="30" position="4 0 -180" rotation="0 0 -12"
-        material="color: #080815; emissive: #0a0a20; emissiveIntensity: 0.3"></a-box>
-
-      <!-- The 3-lane track (1.5m wide = 3 x 0.5m lanes) -->
-      <a-plane width="1.6" height="800" color="#0a0a15" position="0 0.3 0"
-        material="side: double; opacity: 0.7"></a-plane>
-
-      <!-- Lane dividers (neon lines) -->
-      <a-box width="0.02" height="800" depth="0.02" position="-0.5 0.35 0"
-        material="color: #ff00ff; emissive: #ff00ff; emissiveIntensity: 1; opacity: 0.6"></a-box>
-      <a-box width="0.02" height="800" depth="0.02" position="0.5 0.35 0"
-        material="color: #ff00ff; emissive: #ff00ff; emissiveIntensity: 1; opacity: 0.6"></a-box>
-
-      <!-- Outer edge rails -->
-      <a-box width="0.1" height="800" depth="0.1" position="-0.85 0.4 0"
-        material="color: #00ffff; emissive: #00ffff; emissiveIntensity: 2"></a-box>
-      <a-box width="0.1" height="800" depth="0.1" position="0.85 0.4 0"
-        material="color: #00ffff; emissive: #00ffff; emissiveIntensity: 2"></a-box>
-    </a-entity>
-
-    <!-- Massive structures for scale - moved far away from slide path -->
-    <a-box position="-250 0 -400" width="30" height="300" depth="30"
-      material="color: #0a0515; emissive: #220033; emissiveIntensity: 0.3"></a-box>
-    <a-box position="250 25 -500" width="40" height="350" depth="40"
-      material="color: #050a15; emissive: #001133; emissiveIntensity: 0.3"></a-box>
-    <a-box position="-300 -100 -600" width="50" height="200" depth="50"
-      material="color: #100520; emissive: #330044; emissiveIntensity: 0.2"></a-box>
-    <a-box position="300 -100 -700" width="60" height="250" depth="60"
-      material="color: #051015; emissive: #003355; emissiveIntensity: 0.2"></a-box>
-
-    <!-- Platform markers removed - they were blocking the view -->
-
-    <!-- Ground plane - lowered for extended final slide -->
-    <a-plane position="0 -200 -400" rotation="-90 0 0" width="2000" height="2000" material="color: #020205"></a-plane>
-
-  </a-scene>
-</body>
-
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <meta
+      name="description"
+      content="DOWN — a VR descent game for the immersive web. Dodge, drop, survive."
+    />
+    <title>DOWN — VR Descent</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23030308'/%3E%3Cpath d='M16 26 6 14h6V6h8v8h6z' fill='none' stroke='%2329f3ff' stroke-width='2'/%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        --cyan: #29f3ff;
+        --magenta: #ff3df2;
+        --ink: #030308;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--ink);
+        overflow: hidden;
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      }
+      #scene-container {
+        position: fixed;
+        inset: 0;
+      }
+      #scene-container canvas {
+        display: block;
+      }
+      .overlay {
+        position: fixed;
+        z-index: 10;
+        pointer-events: none;
+        user-select: none;
+      }
+      #wordmark {
+        top: 22px;
+        left: 26px;
+        line-height: 1;
+      }
+      #wordmark .title {
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: 0.42em;
+        color: #fff;
+        text-shadow:
+          0 0 12px var(--cyan),
+          0 0 40px rgba(41, 243, 255, 0.5);
+      }
+      #wordmark .title .v {
+        color: var(--magenta);
+        text-shadow:
+          0 0 12px var(--magenta),
+          0 0 40px rgba(255, 61, 242, 0.5);
+      }
+      #wordmark .sub {
+        margin-top: 8px;
+        font-size: 11px;
+        letter-spacing: 0.34em;
+        color: rgba(255, 255, 255, 0.55);
+      }
+      #hint {
+        bottom: 20px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        color: rgba(255, 255, 255, 0.45);
+      }
+      #loading {
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        background: var(--ink);
+        transition: opacity 0.8s ease;
+      }
+      #loading.done {
+        opacity: 0;
+      }
+      #loading .bar {
+        width: 180px;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+      }
+      #loading .bar::after {
+        content: '';
+        display: block;
+        height: 100%;
+        width: 40%;
+        background: linear-gradient(90deg, var(--cyan), var(--magenta));
+        animation: scan 1.1s ease-in-out infinite alternate;
+      }
+      @keyframes scan {
+        from {
+          transform: translateX(-40%);
+        }
+        to {
+          transform: translateX(250%);
+        }
+      }
+      #loading .label {
+        font-size: 12px;
+        letter-spacing: 0.5em;
+        color: rgba(255, 255, 255, 0.6);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="scene-container"></div>
+    <div class="overlay" id="wordmark">
+      <div class="title">D<span class="v">O</span>WN</div>
+      <div class="sub">VR DESCENT &middot; REMASTERED</div>
+    </div>
+    <div class="overlay" id="hint">
+      BEST IN VR &middot; CLEAR A 2M &times; 2M SPACE &middot; DESKTOP = SPECTATOR MODE
+    </div>
+    <div class="overlay" id="loading">
+      <div class="label">DROPPING IN</div>
+      <div class="bar"></div>
+    </div>
+    <script type="module" src="/src/index.ts"></script>
+  </body>
 </html>
