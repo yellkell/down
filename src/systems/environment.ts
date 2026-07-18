@@ -41,6 +41,7 @@ export class EnvironmentSystem extends createSystem({}) {
     env.sky.uniforms.uTime.value = t;
     env.platform.uniforms.uTime.value = t;
     env.city.uniforms.uTime.value = t;
+    env.city.uniforms.uPlayer.value.copy(this.player.position);
     env.clouds.uniforms.uTime.value = t;
 
     // Platform rides with the rig (rig only moves during slides).

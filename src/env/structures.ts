@@ -21,7 +21,11 @@ import { makeGlow, makeWindowTexture, NOISE_GLSL } from './fx.js';
 
 export interface CityHandles {
   group: Group;
-  uniforms: { uTime: { value: number } };
+  uniforms: {
+    uTime: { value: number };
+    /** Player rig position, fed each frame — drives proximity brightness. */
+    uPlayer: { value: Vector3 };
+  };
 }
 
 /**
@@ -43,7 +47,7 @@ const HAZE_COLOR = [0.11, 0.04, 0.14] as const;
 export function createMegastructures(): CityHandles {
   const group = new Group();
   const COUNT = 60;
-  const uniforms = { uTime: { value: 0 } };
+  const uniforms = { uTime: { value: 0 }, uPlayer: { value: new Vector3() } };
 
   const boxGeometry = new BoxGeometry(1, 1, 1);
   const fill = new InstancedMesh(boxGeometry, makeWindowMaterial(uniforms), COUNT);
@@ -109,7 +113,7 @@ export function createMegastructures(): CityHandles {
  * city's light with slow low-frequency noise, and melts the tower bases
  * into haze so they dissolve into the cloud sea instead of intersecting it.
  */
-function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMaterial {
+function makeWindowMaterial(uniforms: CityHandles['uniforms']): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: {
       ...uniforms,
@@ -125,6 +129,8 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
       varying vec3 vWorld;
       varying vec3 vRand;
       varying float vShade;
+      varying float vProx;
+      uniform vec3 uPlayer;
       void main() {
         vLocal = position;
         vNormalL = normal;
@@ -151,6 +157,11 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
           vShade = 0.72 + 0.28 * dot(normalize(wn.xz), normalize(vec2(0.45, -0.89)));
         }
 
+        // Aerial perspective: towers near the player burn bright, the deep
+        // skyline recedes into ember-glow. Follows the rig down the descent.
+        float dCity = distance(instanceMatrix[3].xz, uPlayer.xz);
+        vProx = 1.0 - smoothstep(160.0, 780.0, dCity);
+
         vec4 world = modelMatrix * instanceMatrix * vec4(position, 1.0);
         vWorld = world.xyz;
         gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
@@ -163,6 +174,7 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
       varying vec3 vWorld;
       varying vec3 vRand;
       varying float vShade;
+      varying float vProx;
       uniform float uTime;
       uniform sampler2D uWindows;
       uniform float uMistTop;
@@ -200,7 +212,10 @@ function makeWindowMaterial(uniforms: { uTime: { value: number } }): ShaderMater
           // each lit pane keeps its punch.
           float towerLit = 0.18 + 1.05 * pow(vRand.z, 1.8);
 
-          col += win.rgb * win.a * 1.5 * breathe * towerLit;
+          // Near towers blaze; the deep skyline dims to a distant ember.
+          float distMul = 0.12 + 0.88 * vProx;
+
+          col += win.rgb * win.a * 1.5 * breathe * towerLit * distMul;
         } else {
           col = body * 1.4; // roof caps read slightly lighter
         }
