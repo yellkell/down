@@ -82,8 +82,14 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
 
   // Finish zone sits where the final slide lands — but stays hidden until
   // the final drop begins, so the bottom is a mystery from up top.
+  // (Computed from the real phase heights — hardcoded drops once left the
+  // decorations ~150m short of the actual landing point.)
   const slideRun = (drop: number) => drop / Math.tan(SLIDE_ANGLE);
-  const finishZ = -(slideRun(75) + slideRun(75) + slideRun(150));
+  const finishZ = -(
+    slideRun(PHASE_HEIGHTS[0] - PHASE_HEIGHTS[1]) +
+    slideRun(PHASE_HEIGHTS[1] - PHASE_HEIGHTS[2]) +
+    slideRun(PHASE_HEIGHTS[2] - WINNER_HEIGHT)
+  );
   const finish = createFinishZone(new Vector3(0, WINNER_HEIGHT, finishZ));
   finish.visible = false;
   scene.add(finish);

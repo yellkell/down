@@ -324,8 +324,8 @@ export function createFinishZone(center: Vector3): Group {
   ];
   for (let i = 0; i < 46; i++) {
     const angle = (i / 46) * Math.PI * 2 + (rng() - 0.5);
-    const radius = 12 + rng() * 24;
-    const scale = 0.5 + rng() * 2.2;
+    const radius = 17 + rng() * 26;
+    const scale = 0.5 + rng() * 2.0;
     const color = OBSTACLE_COLORS[Math.floor(rng() * OBSTACLE_COLORS.length)];
     const geometry = geometries[Math.floor(rng() * geometries.length)];
 

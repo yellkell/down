@@ -8,10 +8,10 @@ A roomscale VR descent game for the immersive web, rebuilt on Meta's
 push (the original lives at [`/legacy/`](https://yellkell.github.io/down/legacy/),
 the Christmas sled at [`/vrxmas/`](https://yellkell.github.io/down/vrxmas/)).
 
-You start 220 meters up, standing on a floating neon platform in the void.
+You start 300 meters up, standing on a floating neon platform in the void.
 Dodge the glowing shapes that surge up through the grid, survive the round,
 then ride a long, steep 32° slide of light down to the next platform. Three
-rounds, two slides, and one final ~190-meter victory drop to a finish zone
+rounds, two slides, and one final 220-meter victory drop to a finish zone
 that stays hidden in the fog until you commit to it. Each landing lands with
 a shockwave and a beat to steady yourself before the next round rises.
 
@@ -83,10 +83,10 @@ every slide) and rebuilds everything around it:
 - **Static slide décor → generated tracks**: each slide builds its ribbon
   of light where you actually ride, with flowing chevrons, lane lines, and
   energy hoops to fly through.
-- **The descent is cut to the soundtrack**: "Run" is built on a 60-second
-  section grid, and every slide launches exactly on a section change —
-  the countdown beeps ride the last bars, the final drop rides the
-  climax, and you land in the finish zone as the outro begins.
+- **The descent is cut to the soundtrack**: "Run" rides a strict 5-second
+  bar loop, and every slide launches exactly on the bar grid — the
+  countdown beeps ride the last bars, and the final drop launches on the
+  song's biggest crash, riding its most intense stretch down.
 - **Polish where it counts in VR**: telegraph rings for incoming shapes, a
   kill-zone that glows when you drift toward it, slide-warning deck pulses
   with countdown beeps, wind streaks and a comfort vignette at speed, an

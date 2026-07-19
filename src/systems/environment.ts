@@ -74,7 +74,7 @@ export class EnvironmentSystem extends createSystem({}) {
     // Slide comfort FX.
     const speedRatio = game.slideSpeed / SLIDE_SPEED;
     const vig = env.vignette.uniforms;
-    vig.uStrength.value += (speedRatio * 0.85 - vig.uStrength.value) * Math.min(1, delta * 3);
+    vig.uStrength.value += (speedRatio * 0.55 - vig.uStrength.value) * Math.min(1, delta * 3);
 
     const streaks = env.streaks.uniforms;
     streaks.uStrength.value += (speedRatio - streaks.uStrength.value) * Math.min(1, delta * 4);

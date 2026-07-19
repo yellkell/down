@@ -1,11 +1,11 @@
 /**
  * Central tuning for DOWN.
- * The descent: 3 dodge rounds at 220m / 120m / 20m, connected by long 32°
- * slides, then a final ~190m victory drop to the finish zone at -170m.
- * Platforms are spread far apart vertically so each slide runs a good while.
+ * The descent: 3 dodge rounds at 300m / 170m / 40m, connected by long 32°
+ * slides (130m drops, ~12s each), then a final 220m victory drop (~21s)
+ * to the finish zone at -180m.
  */
-export const PHASE_HEIGHTS = [220, 120, 20];
-export const WINNER_HEIGHT = -170;
+export const PHASE_HEIGHTS = [300, 170, 40];
+export const WINNER_HEIGHT = -180;
 export const TOTAL_ROUNDS = 3;
 
 /** Total vertical descent, start pad to finish zone (drives the win stat). */
@@ -22,12 +22,13 @@ export const IS_TURBO = TURBO;
 export const GRID_DURATION = TURBO ? 6 : 30;
 
 /**
- * "Run" is built on a strict 60s section grid (measured by FFT band
- * analysis): crashes land at 61.5 / 121.5 / 181.5s and the outro begins
- * ~200s. Each slide launches exactly on a section change — and the final
- * drop (~19s) rides the climax straight into the outro as you land.
+ * "Run" rides a strict 5s bar loop starting at 1.5s, with section crashes
+ * at 61.5 / 121.5 / 181.5 (measured by FFT band analysis). Slides launch
+ * on the bar grid at 31.5 / 76.5 / 121.5 — ~30s dodge rounds, ~12s slides
+ * between them, and the final drop launches on the song's biggest crash
+ * (the 121.5s section change) riding its most intense stretch down.
  */
-export const MUSIC_DROPS = [61.5, 121.5, 181.5];
+export const MUSIC_DROPS = [31.5, 76.5, 121.5];
 export const SLIDE_ANGLE = 32 * (Math.PI / 180); // steeper than the original 20° — it has to LOOK like a drop
 export const SLIDE_SPEED = 20; // m/s along the slide
 export const SLIDE_ACCEL_TIME = 1.2; // ease-in seconds for comfort
@@ -36,8 +37,7 @@ export const SLIDE_ACCEL_TIME = 1.2; // ease-in seconds for comfort
 export const GRID_SIZE = 1.5;
 export const KILL_ZONE = GRID_SIZE + 0.4; // leave this square and you're gone
 
-/** Rising projectiles, tuned per round (index 0 = round 1). Rounds run to
- * the song's section boundaries (~61/47/47s), so waves come a bit faster. */
+/** Rising projectiles, tuned per round (index 0 = round 1). */
 export const SPAWN_INTERVAL = [1.3, 1.05, 0.85]; // seconds between waves
 export const PROJECTILE_SPEED = [14, 16, 18]; // m/s upwards
 export const PROJECTILE_SPAWN_Y = -60;
