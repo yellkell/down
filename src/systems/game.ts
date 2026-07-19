@@ -190,6 +190,34 @@ export class GameSystem extends createSystem({
   }
 
   /**
+   * Force a menu panel to draw on top of the world. The finish sits amid the
+   * translucent cloud sea, whose transparent planes were washing over the
+   * end panel; disabling depth test + a huge render order keeps the menu
+   * crisp and readable no matter what FX is around it.
+   */
+  private bringPanelToFront(entity: Entity | undefined): void {
+    const root = entity?.object3D;
+    if (!root) return;
+    root.traverse((node) => {
+      const mesh = node as unknown as {
+        isMesh?: boolean;
+        isInstancedMesh?: boolean;
+        material?: { depthTest: boolean; depthWrite: boolean } | Array<{ depthTest: boolean; depthWrite: boolean }>;
+        renderOrder: number;
+      };
+      if (!mesh.isMesh && !mesh.isInstancedMesh) return;
+      mesh.renderOrder = 10000;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      mats.forEach((m) => {
+        if (m) {
+          m.depthTest = false;
+          m.depthWrite = false;
+        }
+      });
+    });
+  }
+
+  /**
    * The end panel is never visibility-toggled — hide/re-show cycles can
    * leave a panel's interaction stale for controller rays. It stays live
    * and simply parks far below the world until it's needed.
@@ -198,6 +226,7 @@ export class GameSystem extends createSystem({
     const entity = this.panels?.end;
     if (!entity?.object3D) return;
     entity.object3D.position.set(0, shown ? 1.45 : -9999, -1.8);
+    if (shown) this.bringPanelToFront(entity);
   }
 
   /** Same park-below trick for the in-VR start lobby. */
@@ -205,6 +234,7 @@ export class GameSystem extends createSystem({
     const entity = this.panels?.start;
     if (!entity?.object3D) return;
     entity.object3D.position.set(0, shown ? 1.5 : -9999, -1.9);
+    if (shown) this.bringPanelToFront(entity);
   }
 
   private setHud(key: 'round' | 'timer' | 'alt' | 'status', value: string): void {
