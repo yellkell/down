@@ -15,7 +15,7 @@ import {
 } from '@iwsdk/core';
 
 import { NEON, SLIDE_ANGLE } from '../constants.js';
-import { makeGlow, makeTextTexture } from './fx.js';
+import { makeGlow } from './fx.js';
 
 export interface TrackHandles {
   group: Group;
@@ -97,33 +97,8 @@ export function createSlideTrack(length: number): TrackHandles {
   group.add(ribbon);
   disposables.push(ribbon.geometry, ribbonMaterial);
 
-  // --- "LOOK FORWARD" decals painted on the track surface across the first
-  // stretch, so the cue sits beneath the player through the whole drop-in. --
-  const forwardTexture = makeTextTexture('LOOK  FORWARD');
-  const chevronTexture = makeTextTexture('▼', { width: 256, height: 256 });
-  disposables.push(forwardTexture, chevronTexture);
-  const decalGeometry = new PlaneGeometry(3.4, 0.85);
-  const chevronGeometry = new PlaneGeometry(0.9, 0.9);
-  disposables.push(decalGeometry, chevronGeometry);
-  const makeDecal = (texture: typeof forwardTexture, geo: typeof decalGeometry, z: number) => {
-    const mat = new MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      blending: AdditiveBlending,
-      depthWrite: false,
-      side: DoubleSide
-    });
-    const mesh = new Mesh(geo, mat);
-    mesh.rotation.x = -Math.PI / 2; // lie flat on the ribbon
-    mesh.position.set(0, 0.02, z);
-    group.add(mesh);
-    disposables.push(mat);
-  };
-  // Repeat down the entry so it stays under you as you accelerate away.
-  makeDecal(forwardTexture, decalGeometry, -6);
-  makeDecal(chevronTexture, chevronGeometry, -9);
-  makeDecal(forwardTexture, decalGeometry, -18);
-  makeDecal(chevronTexture, chevronGeometry, -22);
+  // (The "LOOK FORWARD" cue is the riser that rises from under the platform
+  // before the slide — it is deliberately NOT written on the track ribbon.)
 
   // --- Rails ------------------------------------------------------------
   const railGeometry = new BoxGeometry(0.06, 0.06, length);
