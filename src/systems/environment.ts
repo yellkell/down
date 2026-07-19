@@ -56,11 +56,11 @@ export class EnvironmentSystem extends createSystem({}) {
     if (game.arrival > 0) game.arrival = Math.max(0, game.arrival - delta / 0.9);
     pu.uArrival.value = game.arrival;
 
-    // "LOOK FORWARD" riser: climbs from 12m below toward the deck across
-    // the slide warning, pulsing — the cue to lift your eyes.
-    const riserActive = game.phase === 'GRID' && game.warning > 0.5;
+    // "LOOK FORWARD" riser: launches right behind the round's final block
+    // and climbs to just under the deck, pulsing — the cue to lift your eyes.
+    const riserActive = game.phase === 'GRID' && game.lookForward;
     if (riserActive) {
-      this.riserY = Math.min(this.riserY + (10.5 / 3) * delta, -1.6);
+      this.riserY = Math.min(this.riserY + 6.5 * delta, -1.6);
       env.platform.riser.visible = true;
       env.platform.riser.position.y = this.riserY;
       const pulse = 0.55 + 0.4 * Math.sin(t * 7);

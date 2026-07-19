@@ -54,6 +54,8 @@ export class GridSpawnerSystem extends createSystem({}) {
   private projectiles: Projectile[] = [];
   private shapes: ShapeSet[] = [];
   private markerGeometry = new RingGeometry(0.16, 0.22, 32);
+  private canFinish = true;
+  private hasSpawnedThisRound = false;
 
   init(): void {
     const geometries = [
@@ -70,6 +72,8 @@ export class GridSpawnerSystem extends createSystem({}) {
     on('grid-start', () => {
       this.active = true;
       this.timer = 0;
+      this.canFinish = true;
+      this.hasSpawnedThisRound = false;
     });
     on('slide-start', () => this.deactivate());
     on('game-over', () => this.deactivate());
@@ -98,6 +102,16 @@ export class GridSpawnerSystem extends createSystem({}) {
     this.active = false;
   }
 
+  /** True once the round's final block has fully cleared — no more will
+   * spawn and none remain in flight. Cue for the LOOK FORWARD riser. */
+  isFieldSpent(): boolean {
+    return (
+      this.hasSpawnedThisRound &&
+      (!this.canFinish || !this.active) &&
+      this.projectiles.length === 0
+    );
+  }
+
   clear(): void {
     this.projectiles.forEach((p) => {
       p.group.removeFromParent();
@@ -112,18 +126,20 @@ export class GridSpawnerSystem extends createSystem({}) {
     const round = Math.min(game.round, 3) - 1;
 
     // A block needs (spawn depth + overshoot) / speed seconds to clear the
-    // deck. Never launch one that can't finish before the slide warning —
-    // seeing blocks rise and then evaporate mid-flight feels broken.
+    // deck. Never launch one that can't finish before the slide — seeing
+    // blocks rise and then evaporate mid-flight feels broken. Blocks may
+    // arrive during the warning beeps; the last one clears ~2s pre-launch.
     const flightTime =
       (Math.abs(PROJECTILE_SPAWN_Y) + PROJECTILE_DESPAWN_Y) /
       PROJECTILE_SPEED[round];
-    const canFinish = game.roundRemaining > flightTime + 3.2;
+    this.canFinish = game.roundRemaining > flightTime + 2.0;
 
-    if (this.active && canFinish) {
+    if (this.active && this.canFinish) {
       this.timer += delta;
       if (this.timer >= SPAWN_INTERVAL[round]) {
         this.timer = 0;
         this.spawnWave(round);
+        this.hasSpawnedThisRound = true;
       }
     }
 

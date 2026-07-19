@@ -236,6 +236,7 @@ export class GameSystem extends createSystem({
     game.phase = 'GRID';
     game.timeInPhase = 0;
     game.warning = 0;
+    game.lookForward = false;
     game.danger = 0;
     this.gridHold = hold;
     this.showWarning('LOOK DOWN', hold + 0.5);
@@ -245,6 +246,7 @@ export class GameSystem extends createSystem({
     game.phase = 'SLIDE';
     game.timeInPhase = 0;
     game.warning = 0;
+    game.lookForward = false;
     game.danger = 0;
     game.isFinal = game.round >= TOTAL_ROUNDS;
 
@@ -395,6 +397,13 @@ export class GameSystem extends createSystem({
     this.setHud('timer', Math.ceil(remaining).toFixed(0));
 
     const spawner = this.world.getSystem(GridSpawnerSystem);
+
+    // The LOOK FORWARD riser launches right behind the round's final
+    // block — however early that lands — so there's never dead air spent
+    // staring at an empty grid.
+    if (!game.lookForward && (remaining <= 3 || spawner?.isFieldSpent())) {
+      game.lookForward = true;
+    }
 
     // Kill-zone proximity -> danger glow + status nag.
     const dx = Math.abs(this.headWorld.x - this.player.position.x);

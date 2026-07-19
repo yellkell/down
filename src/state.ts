@@ -16,6 +16,8 @@ export const game = {
   isFinal: false,
   /** 0..1 — "slide incoming" pulse fed to the platform shader. */
   warning: 0,
+  /** True once the final block has cleared — the LOOK FORWARD riser cue. */
+  lookForward: false,
   /** 0..1 — proximity to the kill-zone edge, drives red glow. */
   danger: 0,
   /** Set to 1 when a slide lands; decays to 0, driving the deck shockwave. */
@@ -53,6 +55,7 @@ export function resetGameState(): void {
   game.runTime = 0;
   game.isFinal = false;
   game.warning = 0;
+  game.lookForward = false;
   game.danger = 0;
   game.arrival = 0;
   game.roundRemaining = 999;
