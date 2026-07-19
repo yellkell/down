@@ -115,6 +115,14 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   } satisfies EnvHandles;
 
   // --- UI panels (compiled from ui/*.uikitml) -----------------------------
+  // In-VR start lobby — parked below until the player enters VR, then shown
+  // so they press BEGIN themselves (the run never auto-starts in VR).
+  const startPanel = world
+    .createTransformEntity(undefined, world.playerEntity)
+    .addComponent(PanelUI, { config: './ui/start.json', maxWidth: 1.35, maxHeight: 1.15 })
+    .addComponent(Interactable);
+  startPanel.object3D!.position.set(0, -9999, -1.9);
+
   const hudPanel = world
     .createTransformEntity(undefined, world.playerEntity)
     .addComponent(PanelUI, { config: './ui/hud.json', maxWidth: 1.1, maxHeight: 0.7 });
@@ -138,6 +146,7 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   warnPanel.object3D!.visible = false;
 
   world.globals.panels = {
+    start: startPanel,
     hud: hudPanel,
     end: endPanel,
     warn: warnPanel
@@ -160,26 +169,33 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   const wordmark = document.getElementById('wordmark');
   const hint = document.getElementById('hint');
 
-  let entered = false;
-  const enterExperience = (): void => {
-    if (entered) return;
-    entered = true;
+  let dismissed = false;
+  const dismissIntro = (): void => {
+    if (dismissed) return;
+    dismissed = true;
     intro?.classList.add('gone');
     window.setTimeout(() => intro?.remove(), 700);
     wordmark?.removeAttribute('hidden');
     hint?.removeAttribute('hidden');
-    game?.beginRun();
   };
 
-  // ENTER VR: request the immersive session; the run auto-starts and the
-  // 2D page dismisses when the session becomes visible (below).
+  // ENTER VR: request the session. The run does NOT auto-start — once the
+  // session is visible, the in-VR lobby appears and the player presses
+  // BEGIN there (handled by the visibility subscription below).
   enterVrBtn?.addEventListener('click', () => {
     if (enterVrBtn.classList.contains('disabled')) return;
     world.launchXR();
   });
-  previewBtn?.addEventListener('click', () => enterExperience());
+  // PREVIEW: desktop spectator — starts straight away.
+  previewBtn?.addEventListener('click', () => {
+    dismissIntro();
+    game?.beginRun();
+  });
   world.visibilityState.subscribe((state) => {
-    if (state !== VisibilityState.NonImmersive) enterExperience();
+    if (state !== VisibilityState.NonImmersive) {
+      dismissIntro();
+      game?.showStartLobby();
+    }
   });
 
   // Reveal the intro now that the world is ready.

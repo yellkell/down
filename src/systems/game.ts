@@ -30,6 +30,7 @@ import { GridSpawnerSystem } from './spawner.js';
 import { SlideSystem } from './slide.js';
 
 export interface PanelEntities {
+  start: Entity;
   hud: Entity;
   end: Entity;
   warn: Entity;
@@ -40,6 +41,10 @@ export interface PanelEntities {
  * warnings, audio stingers, and the win/lose panels.
  */
 export class GameSystem extends createSystem({
+  startPanel: {
+    required: [PanelUI, PanelDocument],
+    where: [eq(PanelUI, 'config', './ui/start.json')]
+  },
   hudPanel: {
     required: [PanelUI, PanelDocument],
     where: [eq(PanelUI, 'config', './ui/hud.json')]
@@ -74,6 +79,10 @@ export class GameSystem extends createSystem({
   private gridHold = 0;
   /** Seconds since the end panel appeared — arms the trigger-retry. */
   private endArm = 0;
+  /** In-VR start lobby is up, waiting for BEGIN. */
+  private lobbyActive = false;
+  /** Seconds since the lobby appeared — arms the trigger-to-begin. */
+  private lobbyArm = 0;
 
   private get panels(): PanelEntities {
     return this.globals.panels as PanelEntities;
@@ -84,6 +93,7 @@ export class GameSystem extends createSystem({
   }
 
   init(): void {
+    this.wireStartPanel();
     this.wireHudPanel();
     this.wireEndPanel();
     this.wireWarnPanel();
@@ -92,9 +102,21 @@ export class GameSystem extends createSystem({
     on('final-slide-complete', () => this.onWin());
   }
 
-  /** Public entry point — called by the 2D intro's ENTER VR / PREVIEW. */
+  /** Start immediately — used by the 2D "PREVIEW IN BROWSER" (desktop). */
   beginRun(): void {
     this.startGame();
+  }
+
+  /**
+   * Show the in-VR lobby and wait for BEGIN — the run does NOT auto-start
+   * on entering VR. Called once the immersive session becomes visible.
+   */
+  showStartLobby(): void {
+    if (this.started) return;
+    this.lobbyActive = true;
+    this.lobbyArm = 0;
+    this.setStartPanelShown(true);
+    this.setPointersVisible(true);
   }
 
   /**
@@ -117,6 +139,15 @@ export class GameSystem extends createSystem({
 
   private getDocument(entity: Entity): UIKitDocument | null {
     return (PanelDocument.data.document[entity.index] as UIKitDocument) ?? null;
+  }
+
+  private wireStartPanel(): void {
+    this.queries.startPanel.subscribe('qualify', (entity) => {
+      const doc = this.getDocument(entity);
+      if (!doc) return;
+      const beginBtn = doc.getElementById('begin-btn') as UIKit.Text;
+      beginBtn?.addEventListener('click', () => this.startGame());
+    });
   }
 
   private wireHudPanel(): void {
@@ -169,6 +200,13 @@ export class GameSystem extends createSystem({
     entity.object3D.position.set(0, shown ? 1.45 : -9999, -1.8);
   }
 
+  /** Same park-below trick for the in-VR start lobby. */
+  private setStartPanelShown(shown: boolean): void {
+    const entity = this.panels?.start;
+    if (!entity?.object3D) return;
+    entity.object3D.position.set(0, shown ? 1.5 : -9999, -1.9);
+  }
+
   private setHud(key: 'round' | 'timer' | 'alt' | 'status', value: string): void {
     if (this.hudCache[key] === value) return;
     this.hudCache[key] = value;
@@ -194,6 +232,8 @@ export class GameSystem extends createSystem({
   private startGame(): void {
     if (this.started) return;
     this.started = true;
+    this.lobbyActive = false;
+    this.setStartPanelShown(false);
     audio.play('begin');
     window.setTimeout(() => audio.startMusic(), 400);
     this.setPanelVisible(this.panels?.hud, true);
@@ -213,8 +253,10 @@ export class GameSystem extends createSystem({
     this.setPanelVisible(this.panels?.hud, true);
     this.setPointersVisible(false);
     this.hudCache = {};
+    // Same cadence as the first start so the BEGIN voice line is heard
+    // clearly before the music comes in (not masked by it).
     audio.play('begin');
-    audio.startMusic();
+    window.setTimeout(() => audio.startMusic(), 400);
     this.enterGrid(1.6);
   }
 
@@ -344,7 +386,14 @@ export class GameSystem extends createSystem({
       if (this.endArm > 1.2 && this.selectPressed()) this.retry();
       return;
     }
-    if (game.phase === 'START') return;
+    if (game.phase === 'START') {
+      // In-VR lobby: BEGIN button, or a bare trigger pull once armed.
+      if (this.lobbyActive) {
+        this.lobbyArm += delta;
+        if (this.lobbyArm > 0.8 && this.selectPressed()) this.startGame();
+      }
+      return;
+    }
 
     game.runTime += delta;
 

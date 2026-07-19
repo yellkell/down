@@ -22,8 +22,9 @@ a shockwave and a beat to steady yourself before the next round rises.
 ## How to play
 
 - **Landing page**: the browser opens on a 2D intro with the DOWN wordmark.
-  Press **ENTER VR** to drop into the headset (auto-detected), or **PREVIEW
-  IN BROWSER** to watch on desktop.
+  Press **ENTER VR** to put on the headset (auto-detected) — then a lobby
+  panel waits in VR until you press **BEGIN DESCENT** (button or trigger).
+  Or **PREVIEW IN BROWSER** to watch on desktop right away.
 - **Best in VR** (Quest browser or any WebXR headset). Clear a **2m × 2m**
   space and stand at its center — you dodge with your real body.
 - **Dodge rounds**: shapes rise from below; every wave leaves one quadrant

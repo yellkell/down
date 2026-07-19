@@ -1,0 +1,54 @@
+<style>
+  .panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 54;
+    padding: 3;
+    background-color: #05050d;
+    border-color: #29f3ff;
+    border-width: 0.18;
+    border-radius: 2.5;
+  }
+  .title {
+    font-size: 4.6;
+    font-weight: bold;
+    letter-spacing: 1;
+    color: #29f3ff;
+    text-align: center;
+    margin-top: 0.5;
+  }
+  .safety {
+    font-size: 2.1;
+    letter-spacing: 0.4;
+    color: #ff8f66;
+    text-align: center;
+    margin-top: 1.8;
+  }
+  #begin-btn {
+    width: 100%;
+    padding: 2.4;
+    margin-top: 2.8;
+    background-color: #29f3ff;
+    color: #03060a;
+    border-radius: 1.4;
+    font-size: 3.2;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 0.6;
+    cursor: pointer;
+  }
+  .hint {
+    font-size: 1.7;
+    color: #9ba0b5;
+    text-align: center;
+    margin-top: 1.4;
+  }
+</style>
+<div class="panel">
+  <span class="title">READY TO DROP?</span>
+  <span class="safety">CLEAR A 2M x 2M SPACE</span>
+  <span class="safety">AND STAND AT ITS CENTER</span>
+  <button id="begin-btn">BEGIN DESCENT</button>
+  <span class="hint">POINT &amp; CLICK — OR PULL TRIGGER</span>
+</div>
