@@ -150,15 +150,17 @@ export class GridSpawnerSystem extends createSystem({}) {
       p.group.rotation.x += p.spinX * delta;
       p.group.rotation.z += p.spinZ * delta;
 
-      // Telegraph marker brightens as the shape closes in from below.
+      // Telegraph marker brightens as the shape closes in from below, then
+      // vanishes the instant the block surfaces through the deck — its job
+      // (warning you it's coming) is done, so it shouldn't linger.
       const distance = rigY - p.group.position.y;
       const material = p.marker.material as MeshBasicMaterial;
-      if (distance > 0) {
+      if (distance > 0.2) {
         material.opacity = Math.min(1, Math.max(0, 1 - distance / 30)) * 0.85;
         const s = 1 + Math.min(1.2, Math.max(0, distance / 18));
         p.marker.scale.setScalar(s);
       } else {
-        material.opacity = 0.2;
+        p.marker.visible = false;
       }
 
       if (p.group.position.y > rigY + PROJECTILE_DESPAWN_Y) {

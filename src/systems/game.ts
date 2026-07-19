@@ -3,6 +3,7 @@ import {
   eq,
   PanelDocument,
   PanelUI,
+  RayDisplayMode,
   UIKit,
   UIKitDocument,
   Vector3,
@@ -95,6 +96,25 @@ export class GameSystem extends createSystem({
 
     on('slide-complete', () => this.onSlideComplete());
     on('final-slide-complete', () => this.onWin());
+
+    // Boot into the start menu — pointers on so you can aim at it.
+    this.setPointersVisible(true);
+  }
+
+  /**
+   * Controller laser pointers are only wanted when a menu is up — otherwise
+   * they hover over the whole experience (the ray keeps hitting scene
+   * geometry, so the SDK's default "visible on intersection" leaves them on).
+   * Force the display mode by game state instead.
+   */
+  private setPointersVisible(visible: boolean): void {
+    const mode = visible ? RayDisplayMode.Visible : RayDisplayMode.Invisible;
+    const pointers = this.input.xr.multiPointers;
+    (['left', 'right'] as const).forEach((hand) => {
+      const rp = (pointers[hand] as unknown as { ray?: { rayDisplayMode: RayDisplayMode } })
+        .ray;
+      if (rp) rp.rayDisplayMode = mode;
+    });
   }
 
   // -- Panel wiring ---------------------------------------------------------
@@ -208,6 +228,7 @@ export class GameSystem extends createSystem({
     window.setTimeout(() => audio.startMusic(), 400);
     this.setPanelVisible(this.panels?.start, false);
     this.setPanelVisible(this.panels?.hud, true);
+    this.setPointersVisible(false);
     emit('game-start');
     this.enterGrid(1.6);
   }
@@ -221,6 +242,7 @@ export class GameSystem extends createSystem({
     this.player.position.set(0, PHASE_HEIGHTS[0], 0);
     this.setEndPanelShown(false);
     this.setPanelVisible(this.panels?.hud, true);
+    this.setPointersVisible(false);
     this.hudCache = {};
     audio.play('begin');
     audio.startMusic();
@@ -288,6 +310,7 @@ export class GameSystem extends createSystem({
     this.setPanelVisible(this.panels?.hud, false);
     this.setPanelVisible(this.panels?.warn, false);
     this.setEndPanelShown(true);
+    this.setPointersVisible(true);
     this.endArm = 0;
   }
 
@@ -306,6 +329,7 @@ export class GameSystem extends createSystem({
     this.setPanelVisible(this.panels?.hud, false);
     this.setPanelVisible(this.panels?.warn, false);
     this.setEndPanelShown(true);
+    this.setPointersVisible(true);
     this.endArm = 0;
   }
 
