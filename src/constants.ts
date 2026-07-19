@@ -37,7 +37,7 @@ export const PROJECTILE_DESPAWN_Y = 3;
  */
 export const LANE_X = [-0.5, 0, 0.5];
 export const BARRIER_SIZE = { w: 0.42, h: 2.6, d: 0.22 }; // wider, chunkier walls
-export const BARRIER_SPACING = [22, 17, 17]; // per slide (1st, 2nd, final)
+export const BARRIER_SPACING = [16, 12, 12]; // per slide (1st, 2nd, final) — dense
 
 export const HEAD_RADIUS = 0.12;
 

@@ -157,16 +157,19 @@ export function createSky(): SkyHandles {
   const planetMaterial = new ShaderMaterial({
     uniforms: { uTime },
     vertexShader: /* glsl */ `
-      varying vec3 vNormal;
+      varying vec3 vWorldN;
       varying vec3 vPos;
       void main() {
-        vNormal = normalize(normalMatrix * normal);
+        // World-space normal: the planet's lighting must be pinned to the
+        // world, not the view — a view-space rim swims when the player
+        // pitches their head in VR.
+        vWorldN = normalize(mat3(modelMatrix) * normal);
         vPos = position;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
     fragmentShader: /* glsl */ `
-      varying vec3 vNormal;
+      varying vec3 vWorldN;
       varying vec3 vPos;
       uniform float uTime;
       ${NOISE_GLSL}
@@ -176,9 +179,11 @@ export function createSky(): SkyHandles {
         vec3 dark = vec3(0.03, 0.015, 0.07);
         vec3 mid = vec3(0.14, 0.04, 0.22);
         vec3 col = mix(dark, mid, bands);
-        // Neon rim light against the nebula.
-        float rim = pow(1.0 - abs(vNormal.z), 3.0);
-        col += vec3(0.15, 0.75, 0.85) * rim * 0.8;
+        // Fixed crescent lit from the nebula's bright quarter — stable
+        // no matter where the player looks from.
+        vec3 lightDir = normalize(vec3(-0.55, 0.3, 0.78));
+        float crescent = smoothstep(-0.05, 0.75, dot(vWorldN, lightDir));
+        col += vec3(0.13, 0.6, 0.7) * crescent * 0.38;
         gl_FragColor = vec4(col, 1.0);
       }
     `

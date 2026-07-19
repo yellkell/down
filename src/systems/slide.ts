@@ -24,11 +24,15 @@ import { makeGlow } from '../env/fx.js';
 import { createSlideTrack, type TrackHandles } from '../env/track.js';
 import { emit, game, on } from '../state.js';
 
-/** Lane patterns per slide difficulty (same rhythm as the 2019 original). */
-const PATTERNS: Record<string, ReadonlyArray<number>> = {
-  easy: [0, 1, 2, 0, 2],
-  medium: [0, 2, 1, 0, 1, 2],
-  final: [0, 2, 1, 0, 2]
+/**
+ * Gate patterns per slide difficulty: each entry is the set of lanes
+ * blocked at that gate. Single-lane gates leave two ways through;
+ * double-lane gates force one specific opening.
+ */
+const PATTERNS: Record<string, ReadonlyArray<ReadonlyArray<number>>> = {
+  easy: [[0], [1], [2], [0], [2], [1]],
+  medium: [[0], [2], [0, 1], [1], [1, 2], [0], [0, 2], [2]],
+  final: [[1], [0, 1], [2], [0], [1, 2], [0, 2], [1], [2], [0, 1]]
 };
 
 export interface SlideRequest {
@@ -76,7 +80,9 @@ export class SlideSystem extends createSystem({}) {
     const drop = start.y - this.targetY;
     const length = drop / Math.sin(SLIDE_ANGLE);
 
-    this.track = createSlideTrack(length + 14);
+    // Track ends right where the slide does — riding it should feel like
+    // reaching the end, not stopping partway down a longer ribbon.
+    this.track = createSlideTrack(length + 4);
     this.track.group.position.copy(start);
     this.scene.add(this.track.group);
 
@@ -86,7 +92,7 @@ export class SlideSystem extends createSystem({}) {
 
   private spawnBarriers(start: Vector3, length: number): void {
     let spacing: number;
-    let pattern: ReadonlyArray<number>;
+    let pattern: ReadonlyArray<ReadonlyArray<number>>;
     if (this.isFinal) {
       spacing = BARRIER_SPACING[2];
       pattern = PATTERNS.final;
@@ -102,11 +108,13 @@ export class SlideSystem extends createSystem({}) {
     const count = Math.floor((length - 12) / spacing);
     for (let i = 1; i <= count; i++) {
       const distance = i * spacing;
-      const lane = pattern[i % pattern.length];
-      const x = start.x + LANE_X[lane];
+      const lanes = pattern[i % pattern.length];
       const y = start.y - Math.sin(SLIDE_ANGLE) * distance;
       const z = start.z - Math.cos(SLIDE_ANGLE) * distance;
-      this.barriers.push(this.spawnBarrier(x, y + BARRIER_SIZE.h / 2, z));
+      for (const lane of lanes) {
+        const x = start.x + LANE_X[lane];
+        this.barriers.push(this.spawnBarrier(x, y + BARRIER_SIZE.h / 2, z));
+      }
     }
   }
 

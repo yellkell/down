@@ -33,58 +33,116 @@ export interface CityHandles {
  * into haze by MIST_FULL — just above the cloud-sea disc, so no geometry
  * ever hard-intersects the sea.
  */
-const MIST_TOP = -175;
-const MIST_FULL = -245;
+const MIST_TOP = -170;
+const MIST_FULL = -228;
 /** Haze the tower bases melt into — must match the cloud sea's glow. */
 const HAZE_COLOR = [0.11, 0.04, 0.14] as const;
 
 /**
- * The skyline: dark glass monoliths lining the descent corridor, sparsely
- * lit, rising out of the cloud sea. One instanced mesh drives all of them;
- * form comes from face shading in the shader (no drawn outlines), and
- * beacons crown the tallest roofs.
+ * The skyline: dark glass towers with real massing — most rise in 2-3
+ * setback tiers like actual skyscrapers, crowned with mechanical blocks
+ * and antenna masts, sparsely lit, their bases lost in the cloud sea.
+ * All tiers live in one instanced mesh; form comes from face shading.
  */
 export function createMegastructures(): CityHandles {
   const group = new Group();
-  const COUNT = 60;
   const uniforms = { uTime: { value: 0 }, uPlayer: { value: new Vector3() } };
-
-  const boxGeometry = new BoxGeometry(1, 1, 1);
-  const fill = new InstancedMesh(boxGeometry, makeWindowMaterial(uniforms), COUNT);
-
-  const matrix = new Matrix4();
-  const quaternion = new Quaternion();
-  const up = new Vector3(0, 1, 0);
   const rng = mulberry32(1337);
 
+  interface Segment {
+    x: number;
+    z: number;
+    bottom: number;
+    height: number;
+    width: number;
+    depth: number;
+    rotY: number;
+  }
+  const segments: Segment[] = [];
+  const antennas: Array<{ x: number; z: number; bottom: number; height: number }> = [];
   const beacons: Vector3[] = [];
 
-  for (let i = 0; i < COUNT; i++) {
+  const TOWERS = 46;
+  for (let i = 0; i < TOWERS; i++) {
     const side = i % 2 === 0 ? -1 : 1;
     // Two depth bands: a near wall and a taller far wall, for a layered skyline.
     const near = rng() < 0.5;
     const x = side * (near ? 90 + rng() * 150 : 260 + rng() * 320);
     const z = 90 - rng() * 1500;
-    const height = (near ? 150 : 240) + rng() * 260;
-    const width = 24 + rng() * 52;
-    const baseY = -300 + rng() * 30; // bases sink into the cloud sea (~-200)
+    const total = (near ? 190 : 280) + rng() * 280;
+    const width = 30 + rng() * 55;
+    const depth = width * (0.7 + rng() * 0.6); // rectangular slabs, not cubes
+    const baseY = -262 + rng() * 12; // pierce the sea, never seen below it
     const rotY = rng() * Math.PI;
 
-    quaternion.setFromAxisAngle(up, rotY);
-    const position = new Vector3(x, baseY + height / 2, z);
-    const scale = new Vector3(width, height, width);
-    matrix.compose(position, quaternion, scale);
-    fill.setMatrixAt(i, matrix);
+    // Setback massing: 1-3 tiers, each narrower than the last.
+    const tiers = rng() < 0.25 ? 1 : rng() < 0.6 ? 2 : 3;
+    const fractions =
+      tiers === 1 ? [1] : tiers === 2 ? [0.68, 0.32] : [0.55, 0.3, 0.15];
+    let bottom = baseY;
+    let tierW = width;
+    let tierD = depth;
+    for (let t = 0; t < tiers; t++) {
+      const h = total * fractions[t];
+      segments.push({ x, z, bottom, height: h, width: tierW, depth: tierD, rotY });
+      bottom += h;
+      tierW *= 0.62 + rng() * 0.16;
+      tierD *= 0.62 + rng() * 0.16;
+    }
 
-    const top = baseY + height;
-    if (top > 120) beacons.push(new Vector3(x, top + 6, z));
+    const top = bottom;
+    if (top > 60 && rng() < 0.55) {
+      // Antenna mast with a red aircraft light.
+      const mastH = 14 + rng() * 30;
+      antennas.push({ x, z, bottom: top, height: mastH });
+      beacons.push(new Vector3(x, top + mastH + 2, z));
+    } else if (top > 120) {
+      beacons.push(new Vector3(x, top + 5, z));
+    }
   }
+
+  const boxGeometry = new BoxGeometry(1, 1, 1);
+  const fill = new InstancedMesh(
+    boxGeometry,
+    makeWindowMaterial(uniforms),
+    segments.length
+  );
+  const matrix = new Matrix4();
+  const quaternion = new Quaternion();
+  const up = new Vector3(0, 1, 0);
+  segments.forEach((s, i) => {
+    quaternion.setFromAxisAngle(up, s.rotY);
+    matrix.compose(
+      new Vector3(s.x, s.bottom + s.height / 2, s.z),
+      quaternion,
+      new Vector3(s.width, s.height, s.depth)
+    );
+    fill.setMatrixAt(i, matrix);
+  });
   fill.instanceMatrix.needsUpdate = true;
   fill.frustumCulled = false;
   group.add(fill);
 
+  // Antenna masts: one dark instanced set, glow tips added as beacons above.
+  const mastMesh = new InstancedMesh(
+    boxGeometry,
+    new MeshBasicMaterial({ color: 0x05050f }),
+    antennas.length
+  );
+  antennas.forEach((a, i) => {
+    matrix.compose(
+      new Vector3(a.x, a.bottom + a.height / 2, a.z),
+      quaternion.identity(),
+      new Vector3(1.6, a.height, 1.6)
+    );
+    mastMesh.setMatrixAt(i, matrix);
+  });
+  mastMesh.instanceMatrix.needsUpdate = true;
+  mastMesh.frustumCulled = false;
+  group.add(mastMesh);
+
   beacons.forEach((p, i) => {
-    const glow = makeGlow(i % 2 === 0 ? NEON.red : NEON.cyan, 9, 0.6);
+    const glow = makeGlow(i % 3 === 0 ? NEON.cyan : NEON.red, 6, 0.55);
     glow.position.copy(p);
     group.add(glow);
   });
@@ -160,7 +218,7 @@ function makeWindowMaterial(uniforms: CityHandles['uniforms']): ShaderMaterial {
         // Aerial perspective: towers near the player burn bright, the deep
         // skyline recedes into ember-glow. Follows the rig down the descent.
         float dCity = distance(instanceMatrix[3].xz, uPlayer.xz);
-        vProx = 1.0 - smoothstep(160.0, 780.0, dCity);
+        vProx = 1.0 - smoothstep(240.0, 950.0, dCity);
 
         vec4 world = modelMatrix * instanceMatrix * vec4(position, 1.0);
         vWorld = world.xyz;
@@ -208,14 +266,13 @@ function makeWindowMaterial(uniforms: CityHandles['uniforms']): ShaderMaterial {
           // Slow "city breathing" — low-frequency only, so nothing shimmers.
           float breathe = 0.8 + 0.2 * vnoise(vec3(vWorld.xz * 0.012, uTime * 0.06));
 
-          // Some towers glow, most sit dim — coverage stays sparse, but
-          // each lit pane keeps its punch.
-          float towerLit = 0.18 + 1.05 * pow(vRand.z, 1.8);
+          // Every tower carries decent light; some blaze.
+          float towerLit = 0.42 + 0.85 * pow(vRand.z, 1.4);
 
-          // Near towers blaze; the deep skyline dims to a distant ember.
-          float distMul = 0.12 + 0.88 * vProx;
+          // Near towers blaze; the deep skyline dims but stays alive.
+          float distMul = 0.3 + 0.7 * vProx;
 
-          col += win.rgb * win.a * 1.5 * breathe * towerLit * distMul;
+          col += win.rgb * win.a * 1.6 * breathe * towerLit * distMul;
         } else {
           col = body * 1.4; // roof caps read slightly lighter
         }

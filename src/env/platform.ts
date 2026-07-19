@@ -79,8 +79,9 @@ export function createPlatform(): PlatformHandles {
 
       void main() {
         float r = length(vPos);
-        // Fade the whole deck out towards its rim.
-        float fade = 1.0 - smoothstep(2.2, 6.5, r);
+        // The deck is just the pad now — no ambient far grid; it ends in a
+        // tight soft rim so the void beyond stays clean.
+        float fade = 1.0 - smoothstep(1.5, 2.5, r);
         if (fade <= 0.0) discard;
 
         vec3 cyan = vec3(0.16, 0.95, 1.0);
@@ -89,11 +90,6 @@ export function createPlatform(): PlatformHandles {
 
         vec3 col = vec3(0.0);
         float alpha = 0.0;
-
-        // Ambient wide grid, drifting slowly — gives the void a floor.
-        float wide = gridLine(vPos, 0.75) * 0.16;
-        col += cyan * wide;
-        alpha += wide * 0.8;
 
         // Faint tint inside the play area — kept low-alpha so the rising
         // blocks stay clearly visible coming up through the deck.
@@ -122,7 +118,7 @@ export function createPlatform(): PlatformHandles {
 
         // Arrival shockwave: a bright cyan ring blasts outward when a slide
         // lands, so touching down on a new platform reads as a real impact.
-        float ringR = (1.0 - uArrival) * 4.5;
+        float ringR = (1.0 - uArrival) * 2.3;
         float ring = smoothstep(0.35, 0.0, abs(r - ringR)) * uArrival;
         col += mix(cyan, vec3(1.0), 0.4) * ring * 2.2;
         alpha = max(alpha, ring);
@@ -132,7 +128,7 @@ export function createPlatform(): PlatformHandles {
     `
   });
 
-  const deck = new Mesh(new PlaneGeometry(14, 14), deckMaterial);
+  const deck = new Mesh(new PlaneGeometry(6, 6), deckMaterial);
   deck.rotation.x = -Math.PI / 2;
   group.add(deck);
 

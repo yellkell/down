@@ -71,18 +71,30 @@ export function makeWindowTexture(): CanvasTexture {
     ctx.fillRect(c * cw + cw * 0.26, r * ch + ch * 0.3, cw * 0.48, ch * 0.36);
   };
 
+  // Baseline glazing first: every pane gets a whisper of blue-grey, so a
+  // facade reads as a glass curtain wall even where no lights are on —
+  // that's the difference between a building and a black box with dots.
+  ctx.shadowBlur = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      ctx.globalAlpha = 0.07 + rnd() * 0.07;
+      ctx.fillStyle = '#8fa8d8';
+      ctx.fillRect(c * cw + cw * 0.24, r * ch + ch * 0.28, cw * 0.52, ch * 0.4);
+    }
+  }
+
   for (let r = 0; r < rows; r++) {
     // Each floor leans toward one color temperature — offices share lighting.
     const floorColor = pick();
 
-    if (rnd() < 0.3) {
+    if (rnd() < 0.2) {
       // Dark floor: at most a lone late-night window.
-      if (rnd() < 0.25) drawPane(Math.floor(rnd() * cols), r, pick(), 0.7);
+      if (rnd() < 0.35) drawPane(Math.floor(rnd() * cols), r, pick(), 0.75);
       continue;
     }
 
-    // Normal floor: mostly dark, windows lit in clustered runs of 1-4.
-    const density = 0.05 + rnd() * 0.22;
+    // Normal floor: windows lit in clustered runs of 1-4.
+    const density = 0.1 + rnd() * 0.3;
     let c = 0;
     while (c < cols) {
       if (rnd() < density) {
