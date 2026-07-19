@@ -10,7 +10,7 @@ import {
 } from '@iwsdk/core';
 
 import { GRID_SIZE, KILL_ZONE, NEON } from '../constants.js';
-import { makeGlow, makeTextTexture } from './fx.js';
+import { makeChevronTexture, makeGlow, makeTextTexture } from './fx.js';
 
 export interface PlatformHandles {
   group: Group;
@@ -167,18 +167,17 @@ export function createPlatform(): PlatformHandles {
   group.add(under);
 
   // "LOOK FORWARD" — rises from beneath the deck during the last seconds
-  // of a round, readable while you're still staring down dodging.
+  // of a round, centered directly under the player's feet.
   const riser = new Group();
   const riserMaterials: MeshBasicMaterial[] = [];
   const addRiserPlane = (
-    text: string,
+    map: ReturnType<typeof makeTextTexture>,
     w: number,
     h: number,
-    z: number,
-    color: string
+    z: number
   ): void => {
     const material = new MeshBasicMaterial({
-      map: makeTextTexture(text, { color }),
+      map,
       transparent: true,
       blending: AdditiveBlending,
       depthWrite: false,
@@ -191,8 +190,9 @@ export function createPlatform(): PlatformHandles {
     riser.add(mesh);
     riserMaterials.push(material);
   };
-  addRiserPlane('LOOK  FORWARD', 2.6, 0.65, 0.3, '#ff3df2');
-  addRiserPlane('▲', 0.8, 0.8, -0.55, '#ff3df2');
+  // Text centered on the pad's middle; chevron just ahead, pointing forward.
+  addRiserPlane(makeTextTexture('LOOK  FORWARD', { color: '#ff3df2' }), 2.2, 0.55, 0.12);
+  addRiserPlane(makeChevronTexture('#ff3df2'), 0.65, 0.65, -0.62);
   riser.position.y = -12;
   riser.visible = false;
   group.add(riser);

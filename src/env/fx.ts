@@ -118,6 +118,33 @@ export function makeWindowTexture(): CanvasTexture {
   return texture;
 }
 
+/** Glowing upward chevron (texture-up = world forward on flat decals) —
+ * drawn as a path because font triangle glyphs render as skinny slivers. */
+export function makeChevronTexture(color = '#ff3df2'): CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, size, size);
+  const draw = (inset: number, fill: string, blur: number): void => {
+    ctx.shadowColor = color;
+    ctx.shadowBlur = blur;
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.moveTo(size / 2, inset + 30);
+    ctx.lineTo(size - inset - 30, size - inset - 50);
+    ctx.lineTo(size / 2, size - inset - 95);
+    ctx.lineTo(inset + 30, size - inset - 50);
+    ctx.closePath();
+    ctx.fill();
+  };
+  draw(0, color, 40);
+  draw(0, color, 18);
+  draw(26, '#ffffff', 6);
+  return new CanvasTexture(canvas);
+}
+
 /** Soft multi-lobed cloud puff on a transparent canvas, for mist sprites. */
 export function makeCloudTexture(): CanvasTexture {
   const size = 256;
