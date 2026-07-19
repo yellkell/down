@@ -73,12 +73,9 @@
         justify-content: center;
         gap: 4px;
         pointer-events: auto;
+        /* Fully opaque — the game must not show behind the intro. */
         background:
-          radial-gradient(
-            ellipse at 50% 42%,
-            rgba(30, 6, 40, 0.55),
-            rgba(3, 3, 8, 0.86) 70%
-          );
+          radial-gradient(ellipse at 50% 40%, #1c0730 0%, #08040f 55%, #030308 100%);
         transition: opacity 0.6s ease;
       }
       #intro.gone {
