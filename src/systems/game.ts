@@ -367,8 +367,9 @@ export class GameSystem extends createSystem({
     // no spawns, no collisions — just recover your footing and look down.
     if (game.phase === 'GRID' && this.gridHold > 0) {
       this.gridHold -= delta;
+      game.roundRemaining = this.roundRemaining();
       this.setHud('round', `ROUND ${game.round}/${TOTAL_ROUNDS}`);
-      this.setHud('timer', Math.ceil(this.roundRemaining()).toFixed(0));
+      this.setHud('timer', Math.ceil(game.roundRemaining).toFixed(0));
       this.setHud('status', 'STEADY — LOOK DOWN');
       if (this.gridHold <= 0) {
         this.beepAt = 3;
@@ -389,6 +390,7 @@ export class GameSystem extends createSystem({
 
   private updateGrid(delta: number): void {
     const remaining = this.roundRemaining();
+    game.roundRemaining = remaining;
     this.setHud('round', `ROUND ${game.round}/${TOTAL_ROUNDS}`);
     this.setHud('timer', Math.ceil(remaining).toFixed(0));
 
@@ -404,7 +406,7 @@ export class GameSystem extends createSystem({
       // Slide incoming: clear the field, pulse the deck, beep the countdown.
       game.warning = 1;
       this.setHud('status', game.round >= TOTAL_ROUNDS ? 'FINAL DROP INCOMING' : 'SLIDE INCOMING');
-      spawner?.deactivate();
+      spawner?.holdFire();
       if (remaining <= this.beepAt) {
         audio.play('square', 0.7);
         this.beepAt -= 1;

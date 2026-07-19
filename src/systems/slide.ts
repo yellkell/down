@@ -171,15 +171,11 @@ export class SlideSystem extends createSystem({}) {
 
     this.elapsed += delta;
 
-    // Ease in for comfort; ease out into the landing.
-    const remaining = this.player.position.y - this.targetY;
+    // Ease in for comfort — then full speed all the way into the landing.
+    // No end-of-slide braking: the arrival shockwave sells the stop, and a
+    // hard cut reads better in VR than a long decel.
     const launch = Math.min(1, this.elapsed / SLIDE_ACCEL_TIME);
-    let target = SLIDE_SPEED * launch * launch;
-    const landingDistance = remaining / Math.sin(SLIDE_ANGLE);
-    if (landingDistance < 10) {
-      target = Math.max(6, SLIDE_SPEED * (landingDistance / 10));
-    }
-    this.speed = target;
+    this.speed = SLIDE_SPEED * launch * launch;
     game.slideSpeed = this.speed;
 
     const dy = -Math.sin(SLIDE_ANGLE) * this.speed * delta;

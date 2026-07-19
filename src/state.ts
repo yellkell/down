@@ -20,6 +20,8 @@ export const game = {
   danger: 0,
   /** Set to 1 when a slide lands; decays to 0, driving the deck shockwave. */
   arrival: 0,
+  /** Seconds left in the current dodge round (music-synced). */
+  roundRemaining: 999,
   /** Current slide speed in m/s, drives vignette + streaks. */
   slideSpeed: 0
 };
@@ -53,5 +55,6 @@ export function resetGameState(): void {
   game.warning = 0;
   game.danger = 0;
   game.arrival = 0;
+  game.roundRemaining = 999;
   game.slideSpeed = 0;
 }

@@ -93,6 +93,11 @@ export class GridSpawnerSystem extends createSystem({}) {
     this.clear();
   }
 
+  /** Stop launching new waves but let the airborne ones finish their rise. */
+  holdFire(): void {
+    this.active = false;
+  }
+
   clear(): void {
     this.projectiles.forEach((p) => {
       p.group.removeFromParent();
@@ -102,13 +107,24 @@ export class GridSpawnerSystem extends createSystem({}) {
   }
 
   update(delta: number): void {
-    if (!this.active || game.phase !== 'GRID') return;
+    if (game.phase !== 'GRID') return;
 
     const round = Math.min(game.round, 3) - 1;
-    this.timer += delta;
-    if (this.timer >= SPAWN_INTERVAL[round]) {
-      this.timer = 0;
-      this.spawnWave(round);
+
+    // A block needs (spawn depth + overshoot) / speed seconds to clear the
+    // deck. Never launch one that can't finish before the slide warning —
+    // seeing blocks rise and then evaporate mid-flight feels broken.
+    const flightTime =
+      (Math.abs(PROJECTILE_SPAWN_Y) + PROJECTILE_DESPAWN_Y) /
+      PROJECTILE_SPEED[round];
+    const canFinish = game.roundRemaining > flightTime + 3.2;
+
+    if (this.active && canFinish) {
+      this.timer += delta;
+      if (this.timer >= SPAWN_INTERVAL[round]) {
+        this.timer = 0;
+        this.spawnWave(round);
+      }
     }
 
     const rigY = this.player.position.y;

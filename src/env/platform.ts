@@ -10,7 +10,7 @@ import {
 } from '@iwsdk/core';
 
 import { GRID_SIZE, KILL_ZONE, NEON } from '../constants.js';
-import { makeGlow } from './fx.js';
+import { makeGlow, makeTextTexture } from './fx.js';
 
 export interface PlatformHandles {
   group: Group;
@@ -21,6 +21,9 @@ export interface PlatformHandles {
     /** 1 at the instant a slide lands, eased back to 0 — drives the shockwave. */
     uArrival: { value: number };
   };
+  /** "LOOK FORWARD" plane that rises from under the deck before a slide. */
+  riser: Group;
+  riserMaterials: MeshBasicMaterial[];
 }
 
 /**
@@ -163,5 +166,36 @@ export function createPlatform(): PlatformHandles {
   under.position.y = -1.4;
   group.add(under);
 
-  return { group, uniforms };
+  // "LOOK FORWARD" — rises from beneath the deck during the last seconds
+  // of a round, readable while you're still staring down dodging.
+  const riser = new Group();
+  const riserMaterials: MeshBasicMaterial[] = [];
+  const addRiserPlane = (
+    text: string,
+    w: number,
+    h: number,
+    z: number,
+    color: string
+  ): void => {
+    const material = new MeshBasicMaterial({
+      map: makeTextTexture(text, { color }),
+      transparent: true,
+      blending: AdditiveBlending,
+      depthWrite: false,
+      side: DoubleSide,
+      opacity: 0.9
+    });
+    const mesh = new Mesh(new PlaneGeometry(w, h), material);
+    mesh.rotation.x = -Math.PI / 2; // flat, readable from above
+    mesh.position.z = z;
+    riser.add(mesh);
+    riserMaterials.push(material);
+  };
+  addRiserPlane('LOOK  FORWARD', 2.6, 0.65, 0.3, '#ff3df2');
+  addRiserPlane('▲', 0.8, 0.8, -0.55, '#ff3df2');
+  riser.position.y = -12;
+  riser.visible = false;
+  group.add(riser);
+
+  return { group, uniforms, riser, riserMaterials };
 }

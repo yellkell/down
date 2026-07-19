@@ -28,6 +28,7 @@ export interface EnvHandles {
  */
 export class EnvironmentSystem extends createSystem({}) {
   private headWorld = new Vector3();
+  private riserY = -12;
 
   private get env(): EnvHandles {
     return this.globals.env as EnvHandles;
@@ -55,6 +56,20 @@ export class EnvironmentSystem extends createSystem({}) {
     // Arrival shockwave: snap to 1 on landing, then decay over ~0.9s.
     if (game.arrival > 0) game.arrival = Math.max(0, game.arrival - delta / 0.9);
     pu.uArrival.value = game.arrival;
+
+    // "LOOK FORWARD" riser: climbs from 12m below toward the deck across
+    // the slide warning, pulsing — the cue to lift your eyes.
+    const riserActive = game.phase === 'GRID' && game.warning > 0.5;
+    if (riserActive) {
+      this.riserY = Math.min(this.riserY + (10.5 / 3) * delta, -1.6);
+      env.platform.riser.visible = true;
+      env.platform.riser.position.y = this.riserY;
+      const pulse = 0.55 + 0.4 * Math.sin(t * 7);
+      env.platform.riserMaterials.forEach((m) => (m.opacity = pulse));
+    } else {
+      this.riserY = -12;
+      env.platform.riser.visible = false;
+    }
 
     // Slide comfort FX.
     const speedRatio = game.slideSpeed / SLIDE_SPEED;
