@@ -5,9 +5,9 @@ import {
   Interactable,
   PanelUI,
   ReferenceSpaceType,
-  ScreenSpace,
   SessionMode,
   Vector3,
+  VisibilityState,
   World
 } from '@iwsdk/core';
 
@@ -115,17 +115,6 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   } satisfies EnvHandles;
 
   // --- UI panels (compiled from ui/*.uikitml) -----------------------------
-  const startPanel = world
-    .createTransformEntity(undefined, world.playerEntity)
-    .addComponent(PanelUI, {
-      config: './ui/start.json',
-      maxWidth: 1.45,
-      maxHeight: 1.6
-    })
-    .addComponent(Interactable)
-    .addComponent(ScreenSpace, { bottom: '24px', right: '24px', width: '30vw' });
-  startPanel.object3D!.position.set(0, 1.45, -2.1);
-
   const hudPanel = world
     .createTransformEntity(undefined, world.playerEntity)
     .addComponent(PanelUI, { config: './ui/hud.json', maxWidth: 1.1, maxHeight: 0.7 });
@@ -149,7 +138,6 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   warnPanel.object3D!.visible = false;
 
   world.globals.panels = {
-    start: startPanel,
     hud: hudPanel,
     end: endPanel,
     warn: warnPanel
@@ -163,6 +151,62 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     .registerSystem(SlideSystem)
     .registerSystem(GameSystem);
 
-  document.getElementById('loading')?.classList.add('done');
-  window.setTimeout(() => document.getElementById('loading')?.remove(), 900);
+  // --- 2D intro / entry ---------------------------------------------------
+  const game = world.getSystem(GameSystem);
+  const intro = document.getElementById('intro');
+  const enterVrBtn = document.getElementById('enter-vr');
+  const previewBtn = document.getElementById('play-browser');
+  const vrStatus = document.getElementById('vr-status');
+  const wordmark = document.getElementById('wordmark');
+  const hint = document.getElementById('hint');
+
+  let entered = false;
+  const enterExperience = (): void => {
+    if (entered) return;
+    entered = true;
+    intro?.classList.add('gone');
+    window.setTimeout(() => intro?.remove(), 700);
+    wordmark?.removeAttribute('hidden');
+    hint?.removeAttribute('hidden');
+    game?.beginRun();
+  };
+
+  // ENTER VR: request the immersive session; the run auto-starts and the
+  // 2D page dismisses when the session becomes visible (below).
+  enterVrBtn?.addEventListener('click', () => {
+    if (enterVrBtn.classList.contains('disabled')) return;
+    world.launchXR();
+  });
+  previewBtn?.addEventListener('click', () => enterExperience());
+  world.visibilityState.subscribe((state) => {
+    if (state !== VisibilityState.NonImmersive) enterExperience();
+  });
+
+  // Reveal the intro now that the world is ready.
+  const loading = document.getElementById('loading');
+  loading?.classList.add('done');
+  window.setTimeout(() => loading?.remove(), 700);
+  intro?.removeAttribute('hidden');
+
+  // Probe for a headset to tailor the call-to-action.
+  const xr = (navigator as Navigator & {
+    xr?: { isSessionSupported(mode: string): Promise<boolean> };
+  }).xr;
+  const noHeadset = (msg: string): void => {
+    enterVrBtn?.classList.add('disabled');
+    if (vrStatus) vrStatus.textContent = msg;
+  };
+  if (xr?.isSessionSupported) {
+    xr.isSessionSupported('immersive-vr')
+      .then((ok) => {
+        if (ok) {
+          if (vrStatus) vrStatus.textContent = 'Headset ready — clear a 2m × 2m space';
+        } else {
+          noHeadset('No headset detected — preview in your browser');
+        }
+      })
+      .catch(() => noHeadset('No headset detected — preview in your browser'));
+  } else {
+    noHeadset('WebXR not available — preview in your browser');
+  }
 });

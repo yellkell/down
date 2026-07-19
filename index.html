@@ -42,31 +42,15 @@
         pointer-events: none;
         user-select: none;
       }
+      /* Small corner logo shown during play */
       #wordmark {
-        top: 22px;
-        left: 26px;
-        line-height: 1;
+        top: 20px;
+        left: 24px;
       }
-      #wordmark .title {
-        font-size: 28px;
-        font-weight: 800;
-        letter-spacing: 0.42em;
-        color: #fff;
-        text-shadow:
-          0 0 12px var(--cyan),
-          0 0 40px rgba(41, 243, 255, 0.5);
-      }
-      #wordmark .title .v {
-        color: var(--magenta);
-        text-shadow:
-          0 0 12px var(--magenta),
-          0 0 40px rgba(255, 61, 242, 0.5);
-      }
-      #wordmark .sub {
-        margin-top: 8px;
-        font-size: 11px;
-        letter-spacing: 0.34em;
-        color: rgba(255, 255, 255, 0.55);
+      #wordmark img {
+        width: 150px;
+        opacity: 0.9;
+        filter: drop-shadow(0 0 10px rgba(41, 243, 255, 0.35));
       }
       #hint {
         bottom: 20px;
@@ -77,18 +61,132 @@
         letter-spacing: 0.18em;
         color: rgba(255, 255, 255, 0.45);
       }
-      #loading {
+
+      /* --- 2D intro / landing page --- */
+      #intro {
+        position: fixed;
         inset: 0;
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        pointer-events: auto;
+        background:
+          radial-gradient(
+            ellipse at 50% 42%,
+            rgba(30, 6, 40, 0.55),
+            rgba(3, 3, 8, 0.86) 70%
+          );
+        transition: opacity 0.6s ease;
+      }
+      #intro.gone {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #intro .logo {
+        width: min(64vw, 620px);
+        max-height: 42vh;
+        object-fit: contain;
+        filter: drop-shadow(0 0 30px rgba(41, 243, 255, 0.35))
+          drop-shadow(0 0 60px rgba(255, 61, 242, 0.25));
+        animation: floaty 5s ease-in-out infinite;
+      }
+      @keyframes floaty {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
+      #intro .tagline {
+        font-size: 13px;
+        letter-spacing: 0.42em;
+        color: rgba(255, 255, 255, 0.62);
+        margin-top: 4px;
+        text-transform: uppercase;
+      }
+      #intro .buttons {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        margin-top: 34px;
+      }
+      #intro button {
+        font-family: inherit;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        font-weight: 800;
+        letter-spacing: 0.24em;
+        transition:
+          transform 0.12s ease,
+          box-shadow 0.2s ease,
+          background 0.2s ease;
+      }
+      #enter-vr {
+        padding: 18px 54px;
+        font-size: 21px;
+        color: #03060a;
+        background: linear-gradient(90deg, var(--cyan), #7defff);
+        box-shadow:
+          0 0 22px rgba(41, 243, 255, 0.55),
+          0 0 60px rgba(41, 243, 255, 0.25);
+      }
+      #enter-vr:hover {
+        transform: translateY(-2px) scale(1.02);
+        box-shadow:
+          0 0 30px rgba(41, 243, 255, 0.8),
+          0 0 80px rgba(41, 243, 255, 0.4);
+      }
+      #enter-vr.disabled {
+        background: #1a1a26;
+        color: rgba(255, 255, 255, 0.4);
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+      #play-browser {
+        padding: 11px 30px;
+        font-size: 13px;
+        color: var(--magenta);
+        background: transparent;
+        border: 1px solid rgba(255, 61, 242, 0.5);
+      }
+      #play-browser:hover {
+        background: rgba(255, 61, 242, 0.12);
+        transform: translateY(-1px);
+      }
+      #vr-status {
+        margin-top: 20px;
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        color: rgba(255, 255, 255, 0.4);
+        min-height: 14px;
+        text-transform: uppercase;
+        text-align: center;
+        padding: 0 20px;
+      }
+
+      /* --- loading --- */
+      #loading {
+        position: fixed;
+        inset: 0;
+        z-index: 30;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 18px;
         background: var(--ink);
-        transition: opacity 0.8s ease;
+        transition: opacity 0.6s ease;
       }
       #loading.done {
         opacity: 0;
+        pointer-events: none;
       }
       #loading .bar {
         width: 180px;
@@ -121,17 +219,30 @@
   </head>
   <body>
     <div id="scene-container"></div>
-    <div class="overlay" id="wordmark">
-      <div class="title">D<span class="v">O</span>WN</div>
-      <div class="sub">VR DESCENT &middot; REMASTERED</div>
+
+    <div class="overlay" id="wordmark" hidden>
+      <img src="./textures/down-logo.png" alt="DOWN" />
     </div>
-    <div class="overlay" id="hint">
+
+    <div class="overlay" id="hint" hidden>
       BEST IN VR &middot; CLEAR A 2M &times; 2M SPACE &middot; DESKTOP = SPECTATOR MODE
     </div>
-    <div class="overlay" id="loading">
+
+    <div id="intro" hidden>
+      <img class="logo" src="./textures/down-logo.png" alt="DOWN" />
+      <div class="tagline">A Descent Through the Neon Void</div>
+      <div class="buttons">
+        <button id="enter-vr">ENTER VR</button>
+        <button id="play-browser">PREVIEW IN BROWSER</button>
+      </div>
+      <div id="vr-status">Checking for a headset&hellip;</div>
+    </div>
+
+    <div id="loading">
       <div class="label">DROPPING IN</div>
       <div class="bar"></div>
     </div>
+
     <script type="module" src="/src/index.ts"></script>
   </body>
 </html>

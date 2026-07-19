@@ -30,7 +30,6 @@ import { GridSpawnerSystem } from './spawner.js';
 import { SlideSystem } from './slide.js';
 
 export interface PanelEntities {
-  start: Entity;
   hud: Entity;
   end: Entity;
   warn: Entity;
@@ -41,10 +40,6 @@ export interface PanelEntities {
  * warnings, audio stingers, and the win/lose panels.
  */
 export class GameSystem extends createSystem({
-  startPanel: {
-    required: [PanelUI, PanelDocument],
-    where: [eq(PanelUI, 'config', './ui/start.json')]
-  },
   hudPanel: {
     required: [PanelUI, PanelDocument],
     where: [eq(PanelUI, 'config', './ui/hud.json')]
@@ -89,16 +84,17 @@ export class GameSystem extends createSystem({
   }
 
   init(): void {
-    this.wireStartPanel();
     this.wireHudPanel();
     this.wireEndPanel();
     this.wireWarnPanel();
 
     on('slide-complete', () => this.onSlideComplete());
     on('final-slide-complete', () => this.onWin());
+  }
 
-    // Boot into the start menu — pointers on so you can aim at it.
-    this.setPointersVisible(true);
+  /** Public entry point — called by the 2D intro's ENTER VR / PREVIEW. */
+  beginRun(): void {
+    this.startGame();
   }
 
   /**
@@ -121,32 +117,6 @@ export class GameSystem extends createSystem({
 
   private getDocument(entity: Entity): UIKitDocument | null {
     return (PanelDocument.data.document[entity.index] as UIKitDocument) ?? null;
-  }
-
-  private wireStartPanel(): void {
-    this.queries.startPanel.subscribe('qualify', (entity) => {
-      const doc = this.getDocument(entity);
-      if (!doc) return;
-      const beginBtn = doc.getElementById('begin-btn') as UIKit.Text;
-      beginBtn?.addEventListener('click', () => this.startGame());
-
-      const xrBtn = doc.getElementById('xr-btn') as UIKit.Text;
-      xrBtn?.addEventListener('click', () => {
-        if (this.world.visibilityState.value === VisibilityState.NonImmersive) {
-          this.world.launchXR();
-        } else {
-          this.world.exitXR();
-        }
-      });
-      this.world.visibilityState.subscribe((state) => {
-        xrBtn?.setProperties({
-          text:
-            state === VisibilityState.NonImmersive
-              ? 'ENTER VR'
-              : 'EXIT TO BROWSER'
-        });
-      });
-    });
   }
 
   private wireHudPanel(): void {
@@ -226,7 +196,6 @@ export class GameSystem extends createSystem({
     this.started = true;
     audio.play('begin');
     window.setTimeout(() => audio.startMusic(), 400);
-    this.setPanelVisible(this.panels?.start, false);
     this.setPanelVisible(this.panels?.hud, true);
     this.setPointersVisible(false);
     emit('game-start');
