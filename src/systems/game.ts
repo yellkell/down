@@ -76,6 +76,8 @@ export class GameSystem extends createSystem({
   private started = false;
   /** Settle hold on a fresh platform before the blocks start rising. */
   private gridHold = 0;
+  /** Seconds since the end panel appeared — arms the trigger-retry. */
+  private endArm = 0;
 
   private get panels(): PanelEntities {
     return this.globals.panels as PanelEntities;
@@ -166,6 +168,17 @@ export class GameSystem extends createSystem({
     if (doc) doc.visible = visible;
   }
 
+  /**
+   * The end panel is never visibility-toggled — hide/re-show cycles can
+   * leave a panel's interaction stale for controller rays. It stays live
+   * and simply parks far below the world until it's needed.
+   */
+  private setEndPanelShown(shown: boolean): void {
+    const entity = this.panels?.end;
+    if (!entity?.object3D) return;
+    entity.object3D.position.set(0, shown ? 1.45 : -9999, -1.8);
+  }
+
   private setHud(key: 'round' | 'timer' | 'alt' | 'status', value: string): void {
     if (this.hudCache[key] === value) return;
     this.hudCache[key] = value;
@@ -206,7 +219,7 @@ export class GameSystem extends createSystem({
     this.env?.confetti.stop();
     if (this.env) this.env.finish.visible = false;
     this.player.position.set(0, PHASE_HEIGHTS[0], 0);
-    this.setPanelVisible(this.panels?.end, false);
+    this.setEndPanelShown(false);
     this.setPanelVisible(this.panels?.hud, true);
     this.hudCache = {};
     audio.play('begin');
@@ -272,7 +285,8 @@ export class GameSystem extends createSystem({
     });
     this.setPanelVisible(this.panels?.hud, false);
     this.setPanelVisible(this.panels?.warn, false);
-    this.setPanelVisible(this.panels?.end, true);
+    this.setEndPanelShown(true);
+    this.endArm = 0;
   }
 
   private gameOver(): void {
@@ -289,7 +303,8 @@ export class GameSystem extends createSystem({
     });
     this.setPanelVisible(this.panels?.hud, false);
     this.setPanelVisible(this.panels?.warn, false);
-    this.setPanelVisible(this.panels?.end, true);
+    this.setEndPanelShown(true);
+    this.endArm = 0;
   }
 
   private formatTime(seconds: number): string {
@@ -303,6 +318,14 @@ export class GameSystem extends createSystem({
    * every slide launches exactly on a section change in "Run"; falls back
    * to the fixed round timer in turbo mode or if the music isn't running.
    */
+  /** Rising-edge trigger press on either XR controller. */
+  private selectPressed(): boolean {
+    const gamepads = this.input.xr.gamepads;
+    return Boolean(
+      gamepads.left?.getSelectStart() || gamepads.right?.getSelectStart()
+    );
+  }
+
   private roundRemaining(): number {
     if (!IS_TURBO) {
       const mt = audio.musicTime();
@@ -319,9 +342,14 @@ export class GameSystem extends createSystem({
   // -- Per-frame ------------------------------------------------------------
 
   update(delta: number): void {
-    if (game.phase === 'START' || game.phase === 'WIN' || game.phase === 'GAME_OVER') {
+    if (game.phase === 'WIN' || game.phase === 'GAME_OVER') {
+      // Escape hatch: after a short arm delay, a bare trigger pull on
+      // either controller retries — no pointing at the panel required.
+      this.endArm += delta;
+      if (this.endArm > 1.2 && this.selectPressed()) this.retry();
       return;
     }
+    if (game.phase === 'START') return;
 
     game.runTime += delta;
 

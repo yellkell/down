@@ -131,12 +131,13 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   hudPanel.object3D!.rotation.x = 0.14;
   hudPanel.object3D!.visible = false;
 
+  // The end panel stays live from boot (visibility-toggling a panel can
+  // leave its ray interaction stale) — it parks far below until needed.
   const endPanel = world
     .createTransformEntity(undefined, world.playerEntity)
     .addComponent(PanelUI, { config: './ui/end.json', maxWidth: 1.3, maxHeight: 1.1 })
     .addComponent(Interactable);
-  endPanel.object3D!.position.set(0, 1.55, -2.3);
-  endPanel.object3D!.visible = false;
+  endPanel.object3D!.position.set(0, -9999, -1.8);
 
   const warnPanel = world
     .createTransformEntity(undefined, world.playerEntity)
