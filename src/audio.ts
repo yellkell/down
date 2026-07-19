@@ -27,7 +27,13 @@ class AudioManager {
       el.preload = 'auto';
       this.sfx.set(name, el);
     });
-    this.music = new Audio('./audio/run.m4a');
+    // AAC where supported, Vorbis everywhere else (open-codec Chromium
+    // builds ship without AAC — no browser should ever lose the music).
+    const probe = document.createElement('audio');
+    const src = probe.canPlayType('audio/mp4; codecs="mp4a.40.2"')
+      ? './audio/run.m4a'
+      : './audio/run.ogg';
+    this.music = new Audio(src);
     this.music.preload = 'auto';
     this.music.loop = true;
     this.music.volume = 0.6;
@@ -45,6 +51,13 @@ class AudioManager {
     if (!this.music) return;
     this.music.currentTime = 0;
     void this.music.play().catch(() => {});
+  }
+
+  /** Playhead of the soundtrack in seconds, or null if it isn't running —
+   * the game syncs its phase transitions to this clock. */
+  musicTime(): number | null {
+    if (!this.music || this.music.paused) return null;
+    return this.music.currentTime;
   }
 
   stopMusic(): void {

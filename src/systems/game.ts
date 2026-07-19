@@ -15,7 +15,9 @@ import {
   BARRIER_SIZE,
   GRID_DURATION,
   HEAD_RADIUS,
+  IS_TURBO,
   KILL_ZONE,
+  MUSIC_DROPS,
   PHASE_HEIGHTS,
   TOTAL_DESCENT,
   TOTAL_ROUNDS,
@@ -296,6 +298,24 @@ export class GameSystem extends createSystem({
     return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
+  /**
+   * Seconds until this round's slide. Runs off the soundtrack's playhead so
+   * every slide launches exactly on a section change in "Run"; falls back
+   * to the fixed round timer in turbo mode or if the music isn't running.
+   */
+  private roundRemaining(): number {
+    if (!IS_TURBO) {
+      const mt = audio.musicTime();
+      if (mt !== null) {
+        const drop = MUSIC_DROPS[Math.min(game.round, TOTAL_ROUNDS) - 1];
+        const remaining = drop - mt;
+        // Sanity window: if the clock has looped or drifted wildly, fall back.
+        if (remaining > -1 && remaining < 200) return Math.max(0, remaining);
+      }
+    }
+    return Math.max(0, GRID_DURATION - game.timeInPhase);
+  }
+
   // -- Per-frame ------------------------------------------------------------
 
   update(delta: number): void {
@@ -320,7 +340,7 @@ export class GameSystem extends createSystem({
     if (game.phase === 'GRID' && this.gridHold > 0) {
       this.gridHold -= delta;
       this.setHud('round', `ROUND ${game.round}/${TOTAL_ROUNDS}`);
-      this.setHud('timer', String(GRID_DURATION));
+      this.setHud('timer', Math.ceil(this.roundRemaining()).toFixed(0));
       this.setHud('status', 'STEADY — LOOK DOWN');
       if (this.gridHold <= 0) {
         this.beepAt = 3;
@@ -340,9 +360,9 @@ export class GameSystem extends createSystem({
   }
 
   private updateGrid(delta: number): void {
-    const remaining = Math.max(0, GRID_DURATION - game.timeInPhase);
+    const remaining = this.roundRemaining();
     this.setHud('round', `ROUND ${game.round}/${TOTAL_ROUNDS}`);
-    this.setHud('timer', remaining.toFixed(0));
+    this.setHud('timer', Math.ceil(remaining).toFixed(0));
 
     const spawner = this.world.getSystem(GridSpawnerSystem);
 
@@ -369,7 +389,7 @@ export class GameSystem extends createSystem({
       this.setHud('status', '');
     }
 
-    if (game.timeInPhase >= GRID_DURATION) {
+    if (remaining <= 0) {
       this.enterSlide();
       return;
     }

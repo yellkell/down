@@ -16,7 +16,18 @@ const TURBO =
   typeof location !== 'undefined' &&
   new URLSearchParams(location.search).has('turbo');
 
-export const GRID_DURATION = TURBO ? 6 : 30; // seconds of dodging per round
+export const IS_TURBO = TURBO;
+
+/** Fallback round length when the music clock isn't available. */
+export const GRID_DURATION = TURBO ? 6 : 30;
+
+/**
+ * "Run" is built on a strict 60s section grid (measured by FFT band
+ * analysis): crashes land at 61.5 / 121.5 / 181.5s and the outro begins
+ * ~200s. Each slide launches exactly on a section change — and the final
+ * drop (~19s) rides the climax straight into the outro as you land.
+ */
+export const MUSIC_DROPS = [61.5, 121.5, 181.5];
 export const SLIDE_ANGLE = 32 * (Math.PI / 180); // steeper than the original 20° — it has to LOOK like a drop
 export const SLIDE_SPEED = 20; // m/s along the slide
 export const SLIDE_ACCEL_TIME = 1.2; // ease-in seconds for comfort
@@ -25,8 +36,9 @@ export const SLIDE_ACCEL_TIME = 1.2; // ease-in seconds for comfort
 export const GRID_SIZE = 1.5;
 export const KILL_ZONE = GRID_SIZE + 0.4; // leave this square and you're gone
 
-/** Rising projectiles, tuned per round (index 0 = round 1). */
-export const SPAWN_INTERVAL = [1.5, 1.2, 0.95]; // seconds between waves
+/** Rising projectiles, tuned per round (index 0 = round 1). Rounds run to
+ * the song's section boundaries (~61/47/47s), so waves come a bit faster. */
+export const SPAWN_INTERVAL = [1.3, 1.05, 0.85]; // seconds between waves
 export const PROJECTILE_SPEED = [14, 16, 18]; // m/s upwards
 export const PROJECTILE_SPAWN_Y = -60;
 export const PROJECTILE_DESPAWN_Y = 3;

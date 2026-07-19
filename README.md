@@ -83,6 +83,10 @@ every slide) and rebuilds everything around it:
 - **Static slide décor → generated tracks**: each slide builds its ribbon
   of light where you actually ride, with flowing chevrons, lane lines, and
   energy hoops to fly through.
+- **The descent is cut to the soundtrack**: "Run" is built on a 60-second
+  section grid, and every slide launches exactly on a section change —
+  the countdown beeps ride the last bars, the final drop rides the
+  climax, and you land in the finish zone as the outro begins.
 - **Polish where it counts in VR**: telegraph rings for incoming shapes, a
   kill-zone that glows when you drift toward it, slide-warning deck pulses
   with countdown beeps, wind streaks and a comfort vignette at speed, an
