@@ -6,7 +6,7 @@ import type { Confetti, SignBoard } from '../env/extras.js';
 import type { PlatformHandles } from '../env/platform.js';
 import type { SkyHandles } from '../env/sky.js';
 import type { CityHandles } from '../env/structures.js';
-import type { StreakHandles, VignetteHandles } from '../env/track.js';
+import type { StreakHandles } from '../env/track.js';
 import { game } from '../state.js';
 
 export interface EnvHandles {
@@ -15,7 +15,6 @@ export interface EnvHandles {
   signs: SignBoard;
   confetti: Confetti;
   streaks: StreakHandles;
-  vignette: VignetteHandles;
   city: CityHandles;
   clouds: CloudHandles;
   /** Hidden until the final drop begins. */
@@ -71,11 +70,8 @@ export class EnvironmentSystem extends createSystem({}) {
       env.platform.riser.visible = false;
     }
 
-    // Slide comfort FX.
+    // Slide speed FX (world-anchored only — nothing head-locked).
     const speedRatio = game.slideSpeed / SLIDE_SPEED;
-    const vig = env.vignette.uniforms;
-    vig.uStrength.value += (speedRatio * 0.55 - vig.uStrength.value) * Math.min(1, delta * 3);
-
     const streaks = env.streaks.uniforms;
     streaks.uStrength.value += (speedRatio - streaks.uStrength.value) * Math.min(1, delta * 4);
     streaks.uOffset.value += game.slideSpeed * delta * 1.35;

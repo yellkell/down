@@ -1,6 +1,5 @@
 import {
   AdditiveBlending,
-  BackSide,
   BoxGeometry,
   BufferGeometry,
   Color,
@@ -12,7 +11,6 @@ import {
   MeshBasicMaterial,
   PlaneGeometry,
   ShaderMaterial,
-  SphereGeometry,
   TorusGeometry
 } from '@iwsdk/core';
 
@@ -260,47 +258,7 @@ export function createStreaks(): StreakHandles {
   return { object, uniforms };
 }
 
-// ---------------------------------------------------------------------------
-
-export interface VignetteHandles {
-  mesh: Mesh;
-  uniforms: { uStrength: { value: number } };
-}
-
-/**
- * Comfort vignette: a small sphere AROUND the camera (never a flat quad —
- * in stereo a quad's edge shows as a hard line across the view). Darkens
- * purely by angle from the view axis, so there is no edge to see, and
- * only softly at that.
- */
-export function createVignette(): VignetteHandles {
-  const uniforms = { uStrength: { value: 0 } };
-  const material = new ShaderMaterial({
-    transparent: true,
-    depthTest: false,
-    depthWrite: false,
-    side: BackSide,
-    uniforms,
-    vertexShader: /* glsl */ `
-      varying vec3 vDir;
-      void main() {
-        vDir = normalize(position); // sphere is centered on the camera
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: /* glsl */ `
-      varying vec3 vDir;
-      uniform float uStrength;
-      void main() {
-        // Angle away from straight-ahead (-Z in camera space).
-        float ang = acos(clamp(dot(normalize(vDir), vec3(0.0, 0.0, -1.0)), -1.0, 1.0));
-        float a = smoothstep(0.95, 1.9, ang) * uStrength;
-        gl_FragColor = vec4(0.0, 0.0, 0.02, a);
-      }
-    `
-  });
-  const mesh = new Mesh(new SphereGeometry(0.35, 32, 16), material);
-  mesh.renderOrder = 999;
-  mesh.frustumCulled = false;
-  return { mesh, uniforms };
-}
+// NOTE: there is deliberately no comfort vignette. Any camera-attached
+// darkening — quad or sphere — reads as a head-locked line/gradient
+// sweeping across the world in stereo, which players find far worse
+// than the motion it's meant to soften.

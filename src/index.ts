@@ -18,7 +18,7 @@ import { Confetti, SignBoard } from './env/extras.js';
 import { createPlatform } from './env/platform.js';
 import { createSky } from './env/sky.js';
 import { createFinishZone, createMegastructures } from './env/structures.js';
-import { createStreaks, createVignette } from './env/track.js';
+import { createStreaks } from './env/track.js';
 import { EnvironmentSystem, type EnvHandles } from './systems/environment.js';
 import { GameSystem, type PanelEntities } from './systems/game.js';
 import { GridSpawnerSystem } from './systems/spawner.js';
@@ -61,7 +61,7 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     spatialUI: true
   }
 }).then((world) => {
-  const { scene, player, camera } = world;
+  const { scene, player } = world;
 
   scene.fog = new FogExp2(0x050510, 0.002); // the original's density — the deep world stays hidden until you're in it
   player.position.set(0, PHASE_HEIGHTS[0], 0);
@@ -100,9 +100,6 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   const streaks = createStreaks();
   player.add(streaks.object);
 
-  const vignette = createVignette();
-  camera.add(vignette.mesh);
-
   const confetti = new Confetti();
   scene.add(confetti.mesh);
 
@@ -112,7 +109,6 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     signs,
     confetti,
     streaks,
-    vignette,
     city,
     clouds,
     finish

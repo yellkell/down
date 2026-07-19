@@ -22,7 +22,7 @@ export const game = {
   arrival: 0,
   /** Seconds left in the current dodge round (music-synced). */
   roundRemaining: 999,
-  /** Current slide speed in m/s, drives vignette + streaks. */
+  /** Current slide speed in m/s, drives the wind streaks. */
   slideSpeed: 0
 };
 
