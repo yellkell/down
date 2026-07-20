@@ -1,6 +1,12 @@
 import { createSystem, Group, Vector3 } from '@iwsdk/core';
 
-import { PHASE_HEIGHTS, SLIDE_SPEED, TOTAL_DESCENT } from '../constants.js';
+import {
+  GRID_DURATION,
+  PHASE_HEIGHTS,
+  SLIDE_SPEED,
+  TOTAL_ROUNDS,
+  WINNER_HEIGHT
+} from '../constants.js';
 import type { SignBoard } from '../env/beacon.js';
 import type { CloudHandles } from '../env/clouds.js';
 import type { Confetti } from '../env/extras.js';
@@ -81,9 +87,34 @@ export class EnvironmentSystem extends createSystem({}) {
     streaks.uOffset.value += game.slideSpeed * delta * 1.35;
     env.streaks.object.visible = streaks.uStrength.value > 0.02;
 
-    const descentProgress =
-      (PHASE_HEIGHTS[0] - this.player.position.y) / TOTAL_DESCENT;
-    env.signs.update(delta, descentProgress);
+    const roundIndex = Math.min(game.round, TOTAL_ROUNDS) - 1;
+    let routePosition: number | null = null;
+    let routeMode: 'idle' | 'climb' | 'drop' | 'finish' = 'idle';
+
+    if (game.phase === 'GRID') {
+      const climb = Math.min(
+        1,
+        Math.max(0, game.timeInPhase / GRID_DURATION)
+      );
+      routePosition = roundIndex * 2 + climb;
+      routeMode = 'climb';
+    } else if (game.phase === 'SLIDE') {
+      const startY = PHASE_HEIGHTS[roundIndex];
+      const targetY = game.isFinal ? WINNER_HEIGHT : PHASE_HEIGHTS[roundIndex + 1];
+      const drop = Math.min(
+        1,
+        Math.max(0, (startY - this.player.position.y) / (startY - targetY))
+      );
+      routePosition = roundIndex * 2 + 1 + drop;
+      routeMode = 'drop';
+    } else if (game.phase === 'WIN') {
+      routePosition = 6;
+      routeMode = 'finish';
+    } else if (game.phase === 'START') {
+      routePosition = 0;
+    }
+
+    env.signs.update(delta, routePosition, routeMode);
 
     this.player.head.getWorldPosition(this.headWorld);
     env.confetti.update(delta, this.headWorld);

@@ -447,6 +447,7 @@ export class GameSystem extends createSystem({
   private enterGrid(hold: number): void {
     game.phase = 'GRID';
     game.timeInPhase = 0;
+    game.roundRemaining = GRID_DURATION;
     game.warning = 0;
     game.lookForward = false;
     game.danger = 0;

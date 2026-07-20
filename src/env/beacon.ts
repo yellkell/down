@@ -16,14 +16,16 @@ const BEACON_W = 6.4;
 const BEACON_H = 4.35;
 
 const ROUTE: ReadonlyArray<readonly [number, number]> = [
-  [-2.42, 1.02],
-  [-1.78, 0.62],
-  [-1.2, 0.82],
-  [-0.52, 0.18],
-  [0.18, -0.12],
-  [0.92, -0.7],
-  [2.18, -0.7]
+  [-2.66, -0.82],
+  [-1.92, 1.12],
+  [-1.28, -0.58],
+  [-0.48, 0.82],
+  [0.16, -0.68],
+  [0.94, 1.02],
+  [2.26, -0.8]
 ];
+
+type RouteMode = 'idle' | 'climb' | 'drop' | 'finish';
 
 /** A live holographic route map whose arrow follows the player's altitude. */
 export class SignBoard {
@@ -35,6 +37,7 @@ export class SignBoard {
   private targetProgress = 0;
   private milestonePulse = 0;
   private time = 0;
+  private mode: RouteMode = 'idle';
 
   constructor() {
     const panel = new Mesh(
@@ -57,12 +60,15 @@ export class SignBoard {
       depthWrite: false,
       side: DoubleSide
     });
-    const shaft = new Mesh(new BoxGeometry(0.42, 0.12, 0.035), this.arrowMaterial);
-    shaft.position.x = -0.13;
-    const head = new Mesh(new BoxGeometry(0.28, 0.28, 0.035), this.arrowMaterial);
-    head.rotation.z = Math.PI / 4;
-    head.position.x = 0.13;
-    this.arrow.add(shaft, head);
+    const shaft = new Mesh(new BoxGeometry(0.42, 0.11, 0.035), this.arrowMaterial);
+    shaft.position.x = -0.16;
+    const upper = new Mesh(new BoxGeometry(0.32, 0.1, 0.035), this.arrowMaterial);
+    upper.position.set(0.12, 0.1, 0);
+    upper.rotation.z = -0.62;
+    const lower = new Mesh(new BoxGeometry(0.32, 0.1, 0.035), this.arrowMaterial);
+    lower.position.set(0.12, -0.1, 0);
+    lower.rotation.z = 0.62;
+    this.arrow.add(shaft, upper, lower);
     this.arrow.position.z = 0.06;
     this.group.add(this.arrow);
 
@@ -94,19 +100,31 @@ export class SignBoard {
     this.progress = 0;
     this.targetProgress = 0;
     this.milestonePulse = 0;
+    this.mode = 'idle';
     this.placeArrow(0);
   }
 
-  update(dt: number, descentProgress: number): void {
+  update(dt: number, routePosition: number | null, mode: RouteMode): void {
     this.time += dt;
     this.group.position.y = 2.4 + Math.sin(this.time * 0.6) * 0.18;
 
-    this.targetProgress = Math.max(
-      this.targetProgress,
-      Math.min(1, Math.max(0, descentProgress))
-    );
-    this.progress += (this.targetProgress - this.progress) * Math.min(1, dt * 4.5);
+    if (routePosition !== null) {
+      this.targetProgress = Math.min(ROUTE.length - 1, Math.max(0, routePosition));
+    }
+    this.mode = mode;
+    const response = mode === 'drop' ? 12 : 4.5;
+    this.progress += (this.targetProgress - this.progress) * Math.min(1, dt * response);
     this.placeArrow(this.progress);
+
+    this.arrowMaterial.color.setHex(
+      mode === 'drop'
+        ? NEON.amber
+        : mode === 'finish'
+          ? NEON.lime
+          : mode === 'climb'
+            ? NEON.cyan
+            : NEON.magenta
+    );
 
     this.milestonePulse = Math.max(0, this.milestonePulse - dt * 1.3);
     const pulse = 1 + this.milestonePulse * 0.55 + Math.sin(this.time * 7) * 0.07;
@@ -118,9 +136,8 @@ export class SignBoard {
   }
 
   private placeArrow(progress: number): void {
-    const scaled = progress * (ROUTE.length - 1);
-    const i = Math.min(ROUTE.length - 2, Math.floor(scaled));
-    const t = scaled - i;
+    const i = Math.min(ROUTE.length - 2, Math.floor(progress));
+    const t = progress - i;
     const a = ROUTE[i];
     const b = ROUTE[i + 1];
     this.arrow.position.x = a[0] + (b[0] - a[0]) * t;
@@ -168,61 +185,99 @@ function drawBeaconTexture(): CanvasTexture {
   ctx.shadowBlur = 12;
   ctx.font = '700 32px monospace';
   ctx.fillStyle = '#29f3ff';
-  ctx.fillText('DESCENT // LIVE NAV', 52, 72);
+  ctx.fillText('RUN SCORE // MUSIC LOCKED', 52, 72);
   ctx.font = '700 20px monospace';
   ctx.fillStyle = '#ff3df2';
-  ctx.fillText('ALTITUDE LINK: ACTIVE', 704, 68);
-
-  const ridges = [
-    [[70, 508], [170, 348], [248, 445], [372, 228], [495, 430], [590, 318], [720, 510]],
-    [[74, 548], [214, 436], [308, 514], [424, 350], [536, 520], [650, 410], [748, 548]],
-    [[104, 576], [252, 502], [354, 568], [474, 474], [602, 568], [734, 494], [818, 576]]
-  ];
-  const colors = ['#29f3ff', '#ff3df2', '#8a2bff'];
-  ridges.forEach((points, i) => {
-    ctx.beginPath();
-    points.forEach(([x, y], j) => (j ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    ctx.strokeStyle = colors[i];
-    ctx.lineWidth = i === 0 ? 8 : 6;
-    ctx.shadowColor = colors[i];
-    ctx.shadowBlur = 18;
-    ctx.stroke();
-  });
+  ctx.fillText('3 ASCENTS // 3 DROPS', 730, 68);
 
   const toCanvas = ([x, y]: readonly [number, number]): [number, number] => [
     canvas.width / 2 + (x / BEACON_W) * canvas.width,
     canvas.height / 2 - (y / BEACON_H) * canvas.height
   ];
-  ctx.beginPath();
-  ROUTE.forEach((point, i) => {
-    const [x, y] = toCanvas(point);
-    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  const route = ROUTE.map(toCanvas);
+
+  // Three distinct mountain faces. Their peaks and valleys are the actual
+  // phase boundaries, so the artwork is also a readable score of the run.
+  const faces = [
+    { points: [route[0], route[1], route[2]], fill: 'rgba(13, 74, 94, 0.38)', edge: '#29f3ff' },
+    { points: [route[2], route[3], route[4]], fill: 'rgba(104, 20, 96, 0.34)', edge: '#ff3df2' },
+    { points: [route[4], route[5], route[6]], fill: 'rgba(57, 29, 118, 0.38)', edge: '#8a2bff' }
+  ];
+  faces.forEach((face) => {
+    ctx.beginPath();
+    face.points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.fillStyle = face.fill;
+    ctx.fill();
+    ctx.strokeStyle = face.edge;
+    ctx.lineWidth = 4;
+    ctx.shadowColor = face.edge;
+    ctx.shadowBlur = 13;
+    ctx.stroke();
+
+    const [left, peak, right] = face.points;
+    const baseMidX = (left[0] + right[0]) * 0.5;
+    const baseMidY = (left[1] + right[1]) * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(peak[0], peak[1]);
+    ctx.lineTo(baseMidX, baseMidY);
+    ctx.moveTo(peak[0], peak[1]);
+    ctx.lineTo((peak[0] + right[0]) * 0.5, (peak[1] + right[1]) * 0.5 + 34);
+    ctx.strokeStyle = face.edge;
+    ctx.globalAlpha = 0.42;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   });
-  ctx.strokeStyle = '#ffb347';
-  ctx.lineWidth = 5;
-  ctx.setLineDash([14, 12]);
-  ctx.shadowColor = '#ff7a2f';
-  ctx.shadowBlur = 16;
-  ctx.stroke();
+
+  // Route legs alternate deliberately: slow cyan climb during each block
+  // section, sharp amber plunge when the soundtrack releases into a slide.
+  for (let i = 0; i < route.length - 1; i++) {
+    const climb = i % 2 === 0;
+    ctx.beginPath();
+    ctx.moveTo(route[i][0], route[i][1]);
+    ctx.lineTo(route[i + 1][0], route[i + 1][1]);
+    ctx.strokeStyle = climb ? '#29f3ff' : '#ffb347';
+    ctx.lineWidth = climb ? 9 : 7;
+    ctx.setLineDash(climb ? [] : [15, 10]);
+    ctx.shadowColor = climb ? '#29f3ff' : '#ff6a2f';
+    ctx.shadowBlur = 22;
+    ctx.stroke();
+  }
   ctx.setLineDash([]);
 
-  [0, 2, 4, 6].forEach((routeIndex, checkpoint) => {
-    const [x, y] = toCanvas(ROUTE[routeIndex]);
-    ctx.fillStyle = checkpoint === 3 ? '#54ff7a' : '#ffb347';
-    ctx.fillRect(x - 8, y - 8, 16, 16);
+  route.forEach(([x, y], i) => {
+    const peak = i % 2 === 1;
+    ctx.fillStyle = i === route.length - 1 ? '#54ff7a' : peak ? '#ff3df2' : '#ffb347';
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-8, -8, 16, 16);
+    ctx.restore();
   });
 
-  const gateX = 844;
-  const gateY = 490;
+  ctx.shadowBlur = 8;
+  ctx.font = '700 16px monospace';
+  ctx.fillStyle = '#29f3ff';
+  ctx.fillText('BLOCK ASCENT 01', 88, 545);
+  ctx.fillText('BLOCK ASCENT 02', 310, 535);
+  ctx.fillText('BLOCK ASCENT 03', 548, 545);
+  ctx.fillStyle = '#ffb347';
+  ctx.fillText('SLIDE 01', 230, 312);
+  ctx.fillText('SLIDE 02', 462, 322);
+  ctx.fillText('FINAL DROP', 700, 316);
+
+  const gateX = 846;
+  const gateY = 430;
   ctx.strokeStyle = '#54ff7a';
   ctx.lineWidth = 11;
   ctx.shadowColor = '#54ff7a';
   ctx.shadowBlur = 20;
   ctx.beginPath();
-  ctx.moveTo(gateX, gateY + 94);
+  ctx.moveTo(gateX, gateY + 108);
   ctx.lineTo(gateX, gateY);
   ctx.lineTo(gateX + 126, gateY);
-  ctx.lineTo(gateX + 126, gateY + 94);
+  ctx.lineTo(gateX + 126, gateY + 108);
   ctx.stroke();
   for (let i = 0; i < 8; i++) {
     ctx.fillStyle = i % 2 ? '#05050d' : '#e8ecff';
@@ -231,13 +286,14 @@ function drawBeaconTexture(): CanvasTexture {
   ctx.shadowBlur = 10;
   ctx.font = '700 25px monospace';
   ctx.fillStyle = '#54ff7a';
-  ctx.fillText('FINISH', gateX + 13, gateY + 62);
+  ctx.fillText('FINISH', gateX + 13, gateY + 68);
 
   ctx.font = '700 19px monospace';
-  ctx.fillStyle = '#9ba0b5';
-  ctx.fillText('SUMMIT / 300M', 54, 642);
+  ctx.fillStyle = '#29f3ff';
+  ctx.fillText('GRID = CLIMB SLOW', 54, 646);
   ctx.textAlign = 'right';
-  ctx.fillText('TERMINAL / -180M', 970, 642);
+  ctx.fillStyle = '#ffb347';
+  ctx.fillText('SLIDE = DROP FAST', 970, 646);
 
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;
