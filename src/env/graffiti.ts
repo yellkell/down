@@ -34,6 +34,22 @@ const TAG_COLORS = [
 const CANVAS_W = 384;
 const CANVAS_H = 144;
 
+// The finish "mountain" signs float at the player's front-left — SignBoard
+// sits at player-local (-7.5, 2.4, -9.5) (see extras.ts). Keep graffiti out
+// of the cone toward them so names never clutter or hide behind the artwork.
+const SIGN_ANGLE = Math.atan2(-9.5, -7.5);
+const SIGN_CLEAR = 0.7; // half-width of the excluded sector, radians (~40deg)
+
+/**
+ * A ring angle (atan2(z, x) from the pad, matching the placement below) that
+ * avoids the sector occupied by the mountain signs. Consumes exactly one rng
+ * draw so it's a drop-in for `rng() * 2PI` and keeps placement deterministic.
+ */
+function ringAngle(rng: () => number): number {
+  const span = Math.PI * 2 - 2 * SIGN_CLEAR;
+  return SIGN_ANGLE + SIGN_CLEAR + rng() * span;
+}
+
 export class GraffitiField {
   readonly group = new Group();
 
@@ -87,7 +103,7 @@ function buildTag(name: string, seed: number): Group {
     // back like angled plaques rising off the ground — readable, while still
     // reading as a ground-level ring distinct from the floating sprays.
     const radius = 3 + rng() * 8;
-    const angle = rng() * Math.PI * 2;
+    const angle = ringAngle(rng);
     tag.position.set(
       Math.cos(angle) * radius,
       0.12 + rng() * 0.5,
@@ -102,7 +118,7 @@ function buildTag(name: string, seed: number): Group {
     // read as mirrored text through their DoubleSide backs), then add a
     // little hand-hung jitter.
     const radius = 4.5 + rng() * 13;
-    const angle = rng() * Math.PI * 2;
+    const angle = ringAngle(rng);
     tag.position.set(
       Math.cos(angle) * radius,
       0.4 + rng() * 5.2,
