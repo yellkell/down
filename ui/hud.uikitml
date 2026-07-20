@@ -3,59 +3,100 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 48;
-    padding: 2;
-    background-color: #05050d;
-    border-color: #1b2438;
+    width: 50;
+    padding: 0.75;
+    background-color: #02030a;
+    border-color: #29f3ff;
     border-width: 0.14;
-    border-radius: 2;
+    border-radius: 0.45;
+  }
+  .header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.8;
+    background-color: #101028;
+  }
+  .system {
+    font-size: 1.35;
+    font-weight: bold;
+    letter-spacing: 0.4;
+    color: #ff3df2;
+  }
+  .live {
+    font-size: 1.35;
+    font-weight: bold;
+    letter-spacing: 0.4;
+    color: #54ff7a;
   }
   .row {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    width: 100%;
+    width: 94%;
+    margin-top: 1.1;
   }
-  /* Fixed widths + flex-shrink 0 so the alt readout changing digit count
-     (480M -> 99M -> 5M as you descend) never wraps to a second line or
-     nudges the layout — that reflow made the HUD jump 1<->2 lines. */
   #round-label {
-    font-size: 2.2;
-    font-weight: bold;
-    letter-spacing: 0.5;
-    color: #29f3ff;
-    width: 20;
+    width: 21;
     flex-shrink: 0;
+    font-size: 2.1;
+    font-weight: bold;
+    letter-spacing: 0.45;
+    color: #29f3ff;
     text-align: left;
   }
   #alt-label {
-    font-size: 2.2;
-    font-weight: bold;
-    letter-spacing: 0.5;
-    color: #9ba0b5;
     width: 22;
     flex-shrink: 0;
-    text-align: right;
-  }
-  #timer-label {
-    font-size: 7;
-    font-weight: bold;
-    color: #ffffff;
-    margin-top: 0.6;
-  }
-  #status-label {
     font-size: 2.1;
     font-weight: bold;
-    letter-spacing: 0.7;
+    letter-spacing: 0.45;
+    color: #ffb347;
+    text-align: right;
+  }
+  .timer-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 94%;
+    padding: 0.8;
+    margin-top: 0.8;
+    background-color: #08091a;
+    border-color: #292951;
+    border-width: 0.1;
+  }
+  #timer-label {
+    font-size: 7.4;
+    font-weight: bold;
+    color: #e8ecff;
+  }
+  #status-label {
+    font-size: 1.9;
+    font-weight: bold;
+    letter-spacing: 0.8;
     color: #ff3df2;
-    margin-top: 0.4;
+    margin-top: 0.25;
+  }
+  .rail {
+    width: 96%;
+    padding: 0.35;
+    margin-top: 0.7;
+    background-color: #29f3ff;
   }
 </style>
 <div class="hud">
+  <div class="header">
+    <span class="system">DOWN//TELEMETRY</span>
+    <span class="live">[ LIVE ]</span>
+  </div>
   <div class="row">
     <span id="round-label">ROUND 1/3</span>
     <span id="alt-label">ALT 300M</span>
   </div>
-  <span id="timer-label">30</span>
-  <span id="status-label"> </span>
+  <div class="timer-wrap">
+    <span id="timer-label">30</span>
+    <span id="status-label"> </span>
+  </div>
+  <div class="rail"></div>
 </div>

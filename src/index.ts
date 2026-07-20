@@ -1,6 +1,5 @@
 import {
   AssetManifest,
-  AssetType,
   FogExp2,
   Interactable,
   PanelUI,
@@ -13,8 +12,9 @@ import {
 
 import { audio } from './audio.js';
 import { PHASE_HEIGHTS, SLIDE_ANGLE, WINNER_HEIGHT } from './constants.js';
+import { SignBoard } from './env/beacon.js';
 import { createClouds } from './env/clouds.js';
-import { Confetti, SignBoard } from './env/extras.js';
+import { Confetti } from './env/extras.js';
 import { GraffitiField } from './env/graffiti.js';
 import { createPlatform } from './env/platform.js';
 import { createSky } from './env/sky.js';
@@ -26,24 +26,7 @@ import { GameSystem, type PanelEntities } from './systems/game.js';
 import { GridSpawnerSystem } from './systems/spawner.js';
 import { SlideSystem } from './systems/slide.js';
 
-const assets: AssetManifest = {
-  signTop: { url: './textures/sign.png', type: AssetType.Texture, priority: 'critical' },
-  signMiddle: {
-    url: './textures/middlesign.jpeg',
-    type: AssetType.Texture,
-    priority: 'critical'
-  },
-  signBottom: {
-    url: './textures/bottomsign.jpeg',
-    type: AssetType.Texture,
-    priority: 'critical'
-  },
-  signFinish: {
-    url: './textures/finishsign.jpeg',
-    type: AssetType.Texture,
-    priority: 'critical'
-  }
-};
+const assets: AssetManifest = {};
 
 World.create(document.getElementById('scene-container') as HTMLDivElement, {
   assets,

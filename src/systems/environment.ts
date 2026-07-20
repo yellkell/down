@@ -1,8 +1,9 @@
 import { createSystem, Group, Vector3 } from '@iwsdk/core';
 
-import { SLIDE_SPEED } from '../constants.js';
+import { PHASE_HEIGHTS, SLIDE_SPEED, TOTAL_DESCENT } from '../constants.js';
+import type { SignBoard } from '../env/beacon.js';
 import type { CloudHandles } from '../env/clouds.js';
-import type { Confetti, SignBoard } from '../env/extras.js';
+import type { Confetti } from '../env/extras.js';
 import type { GraffitiField } from '../env/graffiti.js';
 import type { PlatformHandles } from '../env/platform.js';
 import type { SkyHandles } from '../env/sky.js';
@@ -80,7 +81,9 @@ export class EnvironmentSystem extends createSystem({}) {
     streaks.uOffset.value += game.slideSpeed * delta * 1.35;
     env.streaks.object.visible = streaks.uStrength.value > 0.02;
 
-    env.signs.update(delta);
+    const descentProgress =
+      (PHASE_HEIGHTS[0] - this.player.position.y) / TOTAL_DESCENT;
+    env.signs.update(delta, descentProgress);
 
     this.player.head.getWorldPosition(this.headWorld);
     env.confetti.update(delta, this.headWorld);

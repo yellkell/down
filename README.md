@@ -15,10 +15,6 @@ rounds, two slides, and one final 220-meter victory drop to a finish zone
 that stays hidden in the fog until you commit to it. Each landing lands with
 a shockwave and a beat to steady yourself before the next round rises.
 
-| Start | Slide | Finish |
-| --- | --- | --- |
-| ![Start](docs/screenshot-start.png) | ![Slide](docs/screenshot-slide.png) | ![Win](docs/screenshot-win.png) |
-
 ## How to play
 
 - **Landing page**: the browser opens on a 2D intro with the DOWN wordmark.
@@ -63,7 +59,7 @@ src/
   systems/          ECS systems: game referee, spawner, slide, environment
   env/              the void: sky, platform, track, structures, extras
 ui/                 UIKitML spatial panels (start / HUD / warning / end)
-public/             audio + sign textures (the original 2019 assets)
+public/             audio + the current DOWN wordmark
 legacy/             the untouched original A-Frame version
 vrxmas/             a separate little Christmas sled experience
 ```
@@ -73,9 +69,9 @@ vrxmas/             a separate little Christmas sled experience
 The original (preserved in [`legacy/`](legacy/)) was a single A-Frame page
 with hand-placed star spheres and copy-pasted slide blocks — a first VR
 project, and it shows in the best way. The remaster keeps its soul (same
-three-phase descent, same round timings, same lane patterns, same sign
-artwork — with the slides steepened from 20° to 32° so the drop looks
-like one, and a new soundtrack, "Run", with voice-line rewards after
+three-phase descent, same round timings, and same lane patterns. A live route
+beacon replaces the old sign artwork, and the slides rise from 20° to 32° so
+each drop looks like one. A new soundtrack, "Run", adds voice-line rewards after
 every slide) and rebuilds everything around it:
 
 - **A-Frame → IWSDK**: TypeScript, ECS systems, UIKitML spatial UI panels,

@@ -1,6 +1,4 @@
 import {
-  AdditiveBlending,
-  AssetManager,
   Color,
   DoubleSide,
   DynamicDrawUsage,
@@ -12,98 +10,8 @@ import {
   MeshBasicMaterial,
   PlaneGeometry,
   Quaternion,
-  SRGBColorSpace,
   Vector3
 } from '@iwsdk/core';
-
-import { NEON } from '../constants.js';
-
-// ---------------------------------------------------------------------------
-// Mountain signs — the original hand-made artwork, now floating holograms.
-// ---------------------------------------------------------------------------
-
-const SIGN_IDS = ['signTop', 'signMiddle', 'signBottom', 'signFinish'] as const;
-
-export class SignBoard {
-  readonly group = new Group();
-  private panels: Mesh[] = [];
-  private materials: MeshBasicMaterial[] = [];
-  private current = 0;
-  private fade: { from: number; to: number; t: number } | null = null;
-  private bobTime = 0;
-
-  constructor() {
-    const geometry = new PlaneGeometry(6, 4.5);
-    SIGN_IDS.forEach((id, i) => {
-      const texture = AssetManager.getTexture(id)!;
-      texture.colorSpace = SRGBColorSpace;
-      const material = new MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: i === 0 ? 1 : 0,
-        side: DoubleSide,
-        depthWrite: false
-      });
-      const panel = new Mesh(geometry, material);
-      panel.visible = i === 0;
-      this.group.add(panel);
-      this.panels.push(panel);
-      this.materials.push(material);
-    });
-
-    // Neon frame behind the sign.
-    const frame = new Mesh(
-      new PlaneGeometry(6.35, 4.85),
-      new MeshBasicMaterial({
-        color: NEON.cyan,
-        transparent: true,
-        opacity: 0.14,
-        blending: AdditiveBlending,
-        side: DoubleSide,
-        depthWrite: false
-      })
-    );
-    frame.position.z = -0.03;
-    this.group.add(frame);
-
-    this.group.position.set(-7.5, 2.4, -9.5);
-    this.group.rotation.y = Math.PI / 7;
-  }
-
-  /** Crossfade to sign `index`; never regresses except to the finish sign. */
-  show(index: number): void {
-    if (index === this.current) return;
-    if (index < this.current && index !== 3) return;
-    this.panels[index].visible = true;
-    this.fade = { from: this.current, to: index, t: 0 };
-    this.current = index;
-  }
-
-  reset(): void {
-    this.fade = null;
-    this.current = 0;
-    this.panels.forEach((p, i) => {
-      p.visible = i === 0;
-      this.materials[i].opacity = i === 0 ? 1 : 0;
-    });
-  }
-
-  update(dt: number): void {
-    this.bobTime += dt;
-    this.group.position.y = 2.4 + Math.sin(this.bobTime * 0.6) * 0.18;
-
-    if (this.fade) {
-      this.fade.t += dt / 2; // 2s crossfade
-      const t = Math.min(this.fade.t, 1);
-      this.materials[this.fade.from].opacity = 1 - t;
-      this.materials[this.fade.to].opacity = t;
-      if (t >= 1) {
-        this.panels[this.fade.from].visible = false;
-        this.fade = null;
-      }
-    }
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Confetti — one instanced mesh, ~450 pieces, CPU wobble physics.
