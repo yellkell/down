@@ -209,16 +209,44 @@ export class GameSystem extends createSystem({
       const doc = this.getDocument(entity);
       if (!doc) return;
       this.nameDisplay = doc.getElementById('name-display') as UIKit.Text;
-      const wire = (id: string, fn: () => void): void => {
-        (doc.getElementById(id) as UIKit.Text | null)?.addEventListener('click', fn);
+
+      // Keys fire on pointerDOWN, not click. A UIKit "click" needs the ray on
+      // the same element at BOTH press and release; on a small key the tiny
+      // hand drift while releasing the trigger slips the ray off the key, so
+      // ~half the presses never fire. pointerdown registers the instant the
+      // trigger goes down, before any drift. We still bind click as a fallback
+      // and pair it with the preceding pointerdown so one physical press types
+      // exactly once — even double letters, since each press has its own down.
+      const onKeyPress = (id: string, fn: () => void): void => {
+        const el = doc.getElementById(id) as UIKit.Text | null;
+        if (!el) return;
+        let swallowClickUntil = 0;
+        el.addEventListener('pointerdown', () => {
+          swallowClickUntil = performance.now() + 1200;
+          fn();
+        });
+        el.addEventListener('click', () => {
+          // Trailing click of a press we already handled on pointerdown.
+          if (performance.now() < swallowClickUntil) {
+            swallowClickUntil = 0;
+            return;
+          }
+          fn(); // pointerdown never arrived — take the click instead
+        });
       };
       for (const ch of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
-        wire(`key-${ch}`, () => this.typeChar(ch));
+        onKeyPress(`key-${ch}`, () => this.typeChar(ch));
       }
-      wire('key-space', () => this.typeChar(' '));
-      wire('key-del', () => this.deleteChar());
-      wire('tag-btn', () => this.sprayIt());
-      wire('skip-btn', () => this.skipTag());
+      onKeyPress('key-space', () => this.typeChar(' '));
+      onKeyPress('key-del', () => this.deleteChar());
+
+      // Commit / skip stay on click — they're wide targets, and press-release
+      // semantics guard against an accidental graze spraying or skipping.
+      const wireClick = (id: string, fn: () => void): void => {
+        (doc.getElementById(id) as UIKit.Text | null)?.addEventListener('click', fn);
+      };
+      wireClick('tag-btn', () => this.sprayIt());
+      wireClick('skip-btn', () => this.skipTag());
     });
   }
 
