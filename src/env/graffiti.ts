@@ -81,16 +81,21 @@ function buildTag(name: string, seed: number): Group {
   const tag = buildTagMesh(name, seed, width, 0.55 + rng() * 0.35);
 
   if (rng() < 0.35) {
-    // Deck stencil: flat, just off the floor, random yaw. Tiny per-tag
-    // height offset so overlapping sprays never z-fight.
-    const radius = 2.6 + rng() * 10;
+    // Low ring around the pad. These used to lie dead-flat on the deck
+    // (rotation.x = -PI/2), which is edge-on and unreadable to a standing
+    // player. Now they sit just above the floor and face the player, leaned
+    // back like angled plaques rising off the ground — readable, while still
+    // reading as a ground-level ring distinct from the floating sprays.
+    const radius = 3 + rng() * 8;
     const angle = rng() * Math.PI * 2;
     tag.position.set(
       Math.cos(angle) * radius,
-      0.03 + rng() * 0.02,
+      0.12 + rng() * 0.5,
       Math.sin(angle) * radius - 2
     );
-    tag.rotation.set(-Math.PI / 2, 0, rng() * Math.PI * 2);
+    tag.lookAt(0, 1.6, -2);
+    tag.rotation.x += 0.32 + rng() * 0.18; // lean back toward the deck
+    tag.rotation.z += (rng() - 0.5) * 0.14;
   } else {
     // Floating spray: hangs in the mist among the debris. Face the pad
     // properly (lookAt, not hand-rolled yaw — v1 had tags side-on, which

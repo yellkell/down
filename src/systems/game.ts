@@ -574,7 +574,11 @@ export class GameSystem extends createSystem({
     if (this.introTimer > 0) this.introTimer -= delta;
 
     this.player.head.getWorldPosition(this.headWorld);
-    this.setHud('alt', `ALT ${Math.round(this.player.position.y - WINNER_HEIGHT)}M`);
+    // Clamp at 0 so the readout never flashes a negative meter near the
+    // finish. Fixed-width label (set in hud.uikitml) keeps the digit count
+    // changing without reflowing the HUD.
+    const alt = Math.max(0, Math.round(this.player.position.y - WINNER_HEIGHT));
+    this.setHud('alt', `ALT ${alt}M`);
 
     // Settle beat: freshly landed, holding before the blocks rise. No timer,
     // no spawns, no collisions — just recover your footing and look down.
