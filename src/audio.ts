@@ -20,6 +20,7 @@ export type SfxName = keyof typeof SFX;
 class AudioManager {
   private sfx = new Map<SfxName, HTMLAudioElement>();
   private music: HTMLAudioElement | null = null;
+  private ctx: AudioContext | null = null;
 
   init(): void {
     (Object.keys(SFX) as SfxName[]).forEach((name) => {
@@ -45,6 +46,30 @@ class AudioManager {
     el.currentTime = 0;
     el.volume = volume;
     void el.play().catch(() => {});
+  }
+
+  /**
+   * Tiny synthesized UI blip for keyboard feedback — the .ogg files are
+   * voice lines and countdown stingers, all wrong for a key press. Lazily
+   * creates the AudioContext (first call always follows a user gesture).
+   */
+  blip(freq: number, dur = 0.05, vol = 0.18): void {
+    try {
+      this.ctx ??= new AudioContext();
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(vol, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + dur);
+    } catch {
+      /* feedback audio is never worth crashing over */
+    }
   }
 
   startMusic(): void {

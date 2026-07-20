@@ -295,17 +295,24 @@ export class GameSystem extends createSystem({
   }
 
   private typeChar(ch: string): void {
-    if (!this.nameActive || this.nameBuf.length >= NAME_MAX) return;
-    if (ch === ' ' && this.nameBuf.length === 0) return; // no leading space
+    if (!this.nameActive) return;
+    if (this.nameBuf.length >= NAME_MAX || (ch === ' ' && this.nameBuf.length === 0)) {
+      audio.blip(220, 0.09, 0.12); // rejected — low denial thunk, not silence
+      return;
+    }
     this.nameBuf += ch;
-    audio.play('square', 0.25);
+    audio.blip(1250);
     this.updateNameDisplay();
   }
 
   private deleteChar(): void {
-    if (!this.nameActive || this.nameBuf.length === 0) return;
+    if (!this.nameActive) return;
+    if (this.nameBuf.length === 0) {
+      audio.blip(220, 0.09, 0.12);
+      return;
+    }
     this.nameBuf = this.nameBuf.slice(0, -1);
-    audio.play('square', 0.18);
+    audio.blip(700, 0.06, 0.15);
     this.updateNameDisplay();
   }
 

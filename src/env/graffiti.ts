@@ -92,7 +92,10 @@ function buildTag(name: string, seed: number): Group {
     );
     tag.rotation.set(-Math.PI / 2, 0, rng() * Math.PI * 2);
   } else {
-    // Floating spray: hangs in the mist among the debris, faces the pad.
+    // Floating spray: hangs in the mist among the debris. Face the pad
+    // properly (lookAt, not hand-rolled yaw — v1 had tags side-on, which
+    // read as mirrored text through their DoubleSide backs), then add a
+    // little hand-hung jitter.
     const radius = 4.5 + rng() * 13;
     const angle = rng() * Math.PI * 2;
     tag.position.set(
@@ -100,8 +103,9 @@ function buildTag(name: string, seed: number): Group {
       0.4 + rng() * 5.2,
       Math.sin(angle) * radius - 2
     );
-    tag.rotation.y = angle + Math.PI / 2 + (rng() - 0.5) * 0.5;
-    tag.rotation.z = (rng() - 0.5) * 0.24;
+    tag.lookAt(0, tag.position.y * 0.6 + 0.8, -2);
+    tag.rotation.y += (rng() - 0.5) * 0.35;
+    tag.rotation.z += (rng() - 0.5) * 0.2;
   }
   return tag;
 }
