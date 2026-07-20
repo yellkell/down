@@ -3,100 +3,55 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 50;
-    padding: 0.75;
-    background-color: #02030a;
+    width: 46;
+    padding: 1.2;
+    background-color: #03040b;
     border-color: #29f3ff;
-    border-width: 0.14;
-    border-radius: 0.45;
-  }
-  .header {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    width: 100%;
-    padding: 0.8;
-    background-color: #101028;
-  }
-  .system {
-    font-size: 1.35;
-    font-weight: bold;
-    letter-spacing: 0.4;
-    color: #ff3df2;
-  }
-  .live {
-    font-size: 1.35;
-    font-weight: bold;
-    letter-spacing: 0.4;
-    color: #54ff7a;
+    border-width: 0.12;
+    border-radius: 0.4;
   }
   .row {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    width: 94%;
-    margin-top: 1.1;
+    width: 92%;
+  }
+  #round-label,
+  #alt-label {
+    width: 20;
+    flex-shrink: 0;
+    font-size: 1.9;
+    font-weight: bold;
+    letter-spacing: 0.25;
+    color: #ffffff;
   }
   #round-label {
-    width: 21;
-    flex-shrink: 0;
-    font-size: 2.1;
-    font-weight: bold;
-    letter-spacing: 0.45;
-    color: #29f3ff;
     text-align: left;
   }
   #alt-label {
-    width: 22;
-    flex-shrink: 0;
-    font-size: 2.1;
-    font-weight: bold;
-    letter-spacing: 0.45;
-    color: #ffb347;
     text-align: right;
   }
-  .timer-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 94%;
-    padding: 0.8;
-    margin-top: 0.8;
-    background-color: #08091a;
-    border-color: #292951;
-    border-width: 0.1;
-  }
   #timer-label {
-    font-size: 7.4;
+    font-size: 7.2;
     font-weight: bold;
-    color: #e8ecff;
+    color: #ffffff;
+    margin-top: 0.6;
   }
   #status-label {
-    font-size: 1.9;
+    min-height: 2.2;
+    font-size: 1.75;
     font-weight: bold;
-    letter-spacing: 0.8;
-    color: #ff3df2;
-    margin-top: 0.25;
-  }
-  .rail {
-    width: 96%;
-    padding: 0.35;
-    margin-top: 0.7;
-    background-color: #29f3ff;
+    letter-spacing: 0.45;
+    color: #29f3ff;
+    text-align: center;
+    margin-top: 0.15;
   }
 </style>
 <div class="hud">
-  <div class="header">
-    <span class="system">DOWN//TELEMETRY</span>
-    <span class="live">[ LIVE ]</span>
-  </div>
   <div class="row">
     <span id="round-label">ROUND 1/3</span>
     <span id="alt-label">ALT 300M</span>
   </div>
-  <div class="timer-wrap">
-    <span id="timer-label">30</span>
-    <span id="status-label"> </span>
-  </div>
-  <div class="rail"></div>
+  <span id="timer-label">30</span>
+  <span id="status-label"> </span>
 </div>

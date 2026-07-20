@@ -1,46 +1,23 @@
 <style>
-  .wrap {
+  .warning {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 58;
-    padding: 0.8;
-    background-color: #160514;
+    width: 52;
+    padding: 2;
+    background-color: #09050b;
     border-color: #ff3df2;
-    border-width: 0.2;
+    border-width: 0.14;
     border-radius: 0.35;
   }
-  .signal {
-    width: 100%;
-    padding: 0.45;
-    background-color: #ff3df2;
-  }
-  .label {
-    font-size: 1.65;
-    font-weight: bold;
-    letter-spacing: 0.7;
-    color: #ffb347;
-    margin-top: 0.8;
-  }
   #warn-text {
-    font-size: 8.2;
+    font-size: 7;
     font-weight: bold;
-    letter-spacing: 1.45;
-    color: #e8ecff;
+    letter-spacing: 0.8;
+    color: #ffffff;
     text-align: center;
-    margin-top: 0.25;
-  }
-  .sub {
-    font-size: 1.45;
-    letter-spacing: 0.55;
-    color: #ff8f66;
-    margin-top: 0.4;
   }
 </style>
-<div class="wrap">
-  <div class="signal"></div>
-  <span class="label">!! VECTOR CHANGE</span>
+<div class="warning">
   <span id="warn-text">LOOK DOWN</span>
-  <span class="sub">FOLLOW THE NEON // MOVE NOW</span>
-  <div class="signal"></div>
 </div>

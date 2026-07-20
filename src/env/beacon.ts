@@ -1,12 +1,13 @@
 import {
   AdditiveBlending,
-  BoxGeometry,
   CanvasTexture,
   DoubleSide,
   Group,
   Mesh,
   MeshBasicMaterial,
   PlaneGeometry,
+  Shape,
+  ShapeGeometry,
   SRGBColorSpace
 } from '@iwsdk/core';
 
@@ -16,13 +17,13 @@ const BEACON_W = 6.4;
 const BEACON_H = 4.35;
 
 const ROUTE: ReadonlyArray<readonly [number, number]> = [
-  [-2.66, -0.82],
-  [-1.92, 1.12],
-  [-1.28, -0.58],
-  [-0.48, 0.82],
-  [0.16, -0.68],
-  [0.94, 1.02],
-  [2.26, -0.8]
+  [-2.7, 0.78],
+  [-2.28, 1.1],
+  [-1.45, 0.02],
+  [-1.05, 0.32],
+  [0.05, -0.68],
+  [0.48, -0.38],
+  [2.05, -1.18]
 ];
 
 type RouteMode = 'idle' | 'climb' | 'drop' | 'finish';
@@ -32,6 +33,7 @@ export class SignBoard {
   readonly group = new Group();
   private readonly arrow = new Group();
   private readonly arrowMaterial: MeshBasicMaterial;
+  private readonly arrowGlowMaterial: MeshBasicMaterial;
   private readonly scanLine: Mesh;
   private progress = 0;
   private targetProgress = 0;
@@ -56,19 +58,34 @@ export class SignBoard {
       color: NEON.amber,
       transparent: true,
       opacity: 1,
+      depthWrite: false,
+      side: DoubleSide
+    });
+
+    const arrowShape = new Shape();
+    arrowShape.moveTo(-0.34, 0.055);
+    arrowShape.lineTo(0.045, 0.055);
+    arrowShape.lineTo(0.045, 0.15);
+    arrowShape.lineTo(0.36, 0);
+    arrowShape.lineTo(0.045, -0.15);
+    arrowShape.lineTo(0.045, -0.055);
+    arrowShape.lineTo(-0.34, -0.055);
+    arrowShape.closePath();
+    const arrowGeometry = new ShapeGeometry(arrowShape);
+    const arrowCore = new Mesh(arrowGeometry, this.arrowMaterial);
+    arrowCore.position.z = 0.01;
+
+    this.arrowGlowMaterial = new MeshBasicMaterial({
+      color: NEON.amber,
+      transparent: true,
+      opacity: 0.2,
       blending: AdditiveBlending,
       depthWrite: false,
       side: DoubleSide
     });
-    const shaft = new Mesh(new BoxGeometry(0.42, 0.11, 0.035), this.arrowMaterial);
-    shaft.position.x = -0.16;
-    const upper = new Mesh(new BoxGeometry(0.32, 0.1, 0.035), this.arrowMaterial);
-    upper.position.set(0.12, 0.1, 0);
-    upper.rotation.z = -0.62;
-    const lower = new Mesh(new BoxGeometry(0.32, 0.1, 0.035), this.arrowMaterial);
-    lower.position.set(0.12, -0.1, 0);
-    lower.rotation.z = 0.62;
-    this.arrow.add(shaft, upper, lower);
+    const arrowGlow = new Mesh(arrowGeometry, this.arrowGlowMaterial);
+    arrowGlow.scale.setScalar(1.2);
+    this.arrow.add(arrowGlow, arrowCore);
     this.arrow.position.z = 0.06;
     this.group.add(this.arrow);
 
@@ -116,20 +133,22 @@ export class SignBoard {
     this.progress += (this.targetProgress - this.progress) * Math.min(1, dt * response);
     this.placeArrow(this.progress);
 
-    this.arrowMaterial.color.setHex(
+    const routeColor =
       mode === 'drop'
         ? NEON.amber
         : mode === 'finish'
           ? NEON.lime
           : mode === 'climb'
             ? NEON.cyan
-            : NEON.magenta
-    );
+            : NEON.magenta;
+    this.arrowMaterial.color.setHex(routeColor);
+    this.arrowGlowMaterial.color.setHex(routeColor);
 
     this.milestonePulse = Math.max(0, this.milestonePulse - dt * 1.3);
-    const pulse = 1 + this.milestonePulse * 0.55 + Math.sin(this.time * 7) * 0.07;
+    const pulse = 1 + this.milestonePulse * 0.28 + Math.sin(this.time * 6) * 0.025;
     this.arrow.scale.setScalar(pulse);
-    this.arrowMaterial.opacity = 0.78 + 0.22 * Math.sin(this.time * 8) ** 2;
+    this.arrowMaterial.opacity = 0.9 + 0.1 * Math.sin(this.time * 7) ** 2;
+    this.arrowGlowMaterial.opacity = 0.14 + 0.08 * Math.sin(this.time * 5) ** 2;
 
     const scanT = (this.time * 0.18) % 1;
     this.scanLine.position.y = -1.75 + scanT * 3.5;
@@ -140,9 +159,13 @@ export class SignBoard {
     const t = progress - i;
     const a = ROUTE[i];
     const b = ROUTE[i + 1];
-    this.arrow.position.x = a[0] + (b[0] - a[0]) * t;
-    this.arrow.position.y = a[1] + (b[1] - a[1]) * t;
-    this.arrow.rotation.z = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const segmentLength = Math.hypot(dx, dy);
+    const sideOffset = 0.18;
+    this.arrow.position.x = a[0] + dx * t - (dy / segmentLength) * sideOffset;
+    this.arrow.position.y = a[1] + dy * t + (dx / segmentLength) * sideOffset;
+    this.arrow.rotation.z = Math.atan2(dy, dx);
   }
 }
 
@@ -182,53 +205,62 @@ function drawBeaconTexture(): CanvasTexture {
   ctx.lineTo(310, 18);
   ctx.stroke();
 
-  ctx.shadowBlur = 12;
-  ctx.font = '700 32px monospace';
-  ctx.fillStyle = '#29f3ff';
-  ctx.fillText('RUN SCORE // MUSIC LOCKED', 52, 72);
-  ctx.font = '700 20px monospace';
-  ctx.fillStyle = '#ff3df2';
-  ctx.fillText('3 ASCENTS // 3 DROPS', 730, 68);
-
   const toCanvas = ([x, y]: readonly [number, number]): [number, number] => [
     canvas.width / 2 + (x / BEACON_W) * canvas.width,
     canvas.height / 2 - (y / BEACON_H) * canvas.height
   ];
   const route = ROUTE.map(toCanvas);
 
-  // Three distinct mountain faces. Their peaks and valleys are the actual
-  // phase boundaries, so the artwork is also a readable score of the run.
-  const faces = [
-    { points: [route[0], route[1], route[2]], fill: 'rgba(13, 74, 94, 0.38)', edge: '#29f3ff' },
-    { points: [route[2], route[3], route[4]], fill: 'rgba(104, 20, 96, 0.34)', edge: '#ff3df2' },
-    { points: [route[4], route[5], route[6]], fill: 'rgba(57, 29, 118, 0.38)', edge: '#8a2bff' }
-  ];
-  faces.forEach((face) => {
-    ctx.beginPath();
-    face.points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    ctx.closePath();
-    ctx.fillStyle = face.fill;
-    ctx.fill();
-    ctx.strokeStyle = face.edge;
-    ctx.lineWidth = 4;
-    ctx.shadowColor = face.edge;
-    ctx.shadowBlur = 13;
-    ctx.stroke();
+  // One descending ridge rather than three equal mountains. Each block is a
+  // short shoulder-to-peak climb; every slide is a much longer plunge.
+  const mountainBase = canvas.height - 18;
+  const mountainFill = ctx.createLinearGradient(0, 150, 0, mountainBase);
+  mountainFill.addColorStop(0, 'rgba(23, 125, 145, 0.52)');
+  mountainFill.addColorStop(0.48, 'rgba(80, 26, 112, 0.42)');
+  mountainFill.addColorStop(1, 'rgba(8, 8, 30, 0.12)');
+  const mountainLeft = 18;
+  ctx.beginPath();
+  ctx.moveTo(mountainLeft, route[0][1] + 42);
+  route.forEach(([x, y]) => ctx.lineTo(x, y));
+  ctx.lineTo(route[route.length - 1][0], mountainBase);
+  ctx.lineTo(mountainLeft, mountainBase);
+  ctx.closePath();
+  ctx.fillStyle = mountainFill;
+  ctx.fill();
 
-    const [left, peak, right] = face.points;
-    const baseMidX = (left[0] + right[0]) * 0.5;
-    const baseMidY = (left[1] + right[1]) * 0.5;
+  // Broad, uneven facets keep the silhouette mountainous without turning
+  // each gameplay phrase into a symmetrical triangle.
+  const facetColors = [
+    'rgba(41, 243, 255, 0.16)',
+    'rgba(255, 61, 242, 0.14)',
+    'rgba(138, 43, 255, 0.18)'
+  ];
+  for (let i = 0; i < 3; i++) {
+    const shoulder = route[i * 2];
+    const peak = route[i * 2 + 1];
+    const landing = route[i * 2 + 2];
+    const anchorX = peak[0] + (landing[0] - peak[0]) * 0.42;
+    const anchorY = Math.min(mountainBase, landing[1] + 142 + i * 18);
+
+    ctx.beginPath();
+    ctx.moveTo(shoulder[0], shoulder[1]);
+    ctx.lineTo(peak[0], peak[1]);
+    ctx.lineTo(anchorX, anchorY);
+    ctx.lineTo(landing[0], landing[1]);
+    ctx.closePath();
+    ctx.fillStyle = facetColors[i];
+    ctx.fill();
+
     ctx.beginPath();
     ctx.moveTo(peak[0], peak[1]);
-    ctx.lineTo(baseMidX, baseMidY);
-    ctx.moveTo(peak[0], peak[1]);
-    ctx.lineTo((peak[0] + right[0]) * 0.5, (peak[1] + right[1]) * 0.5 + 34);
-    ctx.strokeStyle = face.edge;
-    ctx.globalAlpha = 0.42;
+    ctx.lineTo(anchorX, anchorY);
+    ctx.lineTo(landing[0] - 18, mountainBase);
+    ctx.strokeStyle = i === 0 ? '#29f3ff' : i === 1 ? '#ff3df2' : '#8a2bff';
+    ctx.globalAlpha = 0.36;
     ctx.lineWidth = 3;
     ctx.stroke();
     ctx.globalAlpha = 1;
-  });
+  }
 
   // Route legs alternate deliberately: slow cyan climb during each block
   // section, sharp amber plunge when the soundtrack releases into a slide.
@@ -247,8 +279,11 @@ function drawBeaconTexture(): CanvasTexture {
   ctx.setLineDash([]);
 
   route.forEach(([x, y], i) => {
+    // The finish gate is the final marker; another green node here would sit
+    // directly over its label and make FINISH harder to read.
+    if (i === route.length - 1) return;
     const peak = i % 2 === 1;
-    ctx.fillStyle = i === route.length - 1 ? '#54ff7a' : peak ? '#ff3df2' : '#ffb347';
+    ctx.fillStyle = peak ? '#ff3df2' : '#ffb347';
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(Math.PI / 4);
@@ -256,19 +291,9 @@ function drawBeaconTexture(): CanvasTexture {
     ctx.restore();
   });
 
-  ctx.shadowBlur = 8;
-  ctx.font = '700 16px monospace';
-  ctx.fillStyle = '#29f3ff';
-  ctx.fillText('BLOCK ASCENT 01', 88, 545);
-  ctx.fillText('BLOCK ASCENT 02', 310, 535);
-  ctx.fillText('BLOCK ASCENT 03', 548, 545);
-  ctx.fillStyle = '#ffb347';
-  ctx.fillText('SLIDE 01', 230, 312);
-  ctx.fillText('SLIDE 02', 462, 322);
-  ctx.fillText('FINAL DROP', 700, 316);
-
-  const gateX = 846;
-  const gateY = 430;
+  const finishPoint = route[route.length - 1];
+  const gateX = finishPoint[0] - 27;
+  const gateY = finishPoint[1] - 46;
   ctx.strokeStyle = '#54ff7a';
   ctx.lineWidth = 11;
   ctx.shadowColor = '#54ff7a';
@@ -287,13 +312,6 @@ function drawBeaconTexture(): CanvasTexture {
   ctx.font = '700 25px monospace';
   ctx.fillStyle = '#54ff7a';
   ctx.fillText('FINISH', gateX + 13, gateY + 68);
-
-  ctx.font = '700 19px monospace';
-  ctx.fillStyle = '#29f3ff';
-  ctx.fillText('GRID = CLIMB SLOW', 54, 646);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#ffb347';
-  ctx.fillText('SLIDE = DROP FAST', 970, 646);
 
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;

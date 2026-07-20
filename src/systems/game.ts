@@ -82,6 +82,7 @@ export class GameSystem extends createSystem({
   private introTimer = 0;
   private beepAt = 0;
   private started = false;
+  private musicStartTimer: number | null = null;
   /** Settle hold on a fresh platform before the blocks start rising. */
   private gridHold = 0;
   /** Seconds since the end panel appeared — arms the trigger-retry. */
@@ -404,13 +405,23 @@ export class GameSystem extends createSystem({
 
   // -- Phase transitions ----------------------------------------------------
 
+  private startRunAudio(): void {
+    if (this.musicStartTimer !== null) window.clearTimeout(this.musicStartTimer);
+    audio.stopAll();
+    audio.play('begin');
+    // begin.ogg is 747 ms. Give the full line clear air before Run enters.
+    this.musicStartTimer = window.setTimeout(() => {
+      audio.startMusic();
+      this.musicStartTimer = null;
+    }, 850);
+  }
+
   private startGame(): void {
     if (this.started) return;
     this.started = true;
     this.lobbyActive = false;
     this.setStartPanelShown(false);
-    audio.play('begin');
-    window.setTimeout(() => audio.startMusic(), 400);
+    this.startRunAudio();
     this.setPanelVisible(this.panels?.hud, true);
     this.setPointersVisible(false);
     emit('game-start');
@@ -432,10 +443,7 @@ export class GameSystem extends createSystem({
     this.setPanelVisible(this.panels?.hud, true);
     this.setPointersVisible(false);
     this.hudCache = {};
-    // Same cadence as the first start so the BEGIN voice line is heard
-    // clearly before the music comes in (not masked by it).
-    audio.play('begin');
-    window.setTimeout(() => audio.startMusic(), 400);
+    this.startRunAudio();
     this.enterGrid(1.6);
   }
 
@@ -702,7 +710,7 @@ export class GameSystem extends createSystem({
 
   private updateSlide(): void {
     this.setHud('round', game.isFinal ? 'FINAL DROP' : `ROUND ${game.round}/${TOTAL_ROUNDS}`);
-    this.setHud('timer', '▼');
+    this.setHud('timer', 'V');
     this.setHud('status', 'LEAN BETWEEN THE BARRIERS');
 
     if (this.visibilityState.value === VisibilityState.NonImmersive) return;

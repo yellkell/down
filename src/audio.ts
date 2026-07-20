@@ -88,6 +88,15 @@ class AudioManager {
   stopMusic(): void {
     this.music?.pause();
   }
+
+  /** Silence the previous run before replaying its opening cue. */
+  stopAll(): void {
+    this.music?.pause();
+    this.sfx.forEach((el) => {
+      el.pause();
+      el.currentTime = 0;
+    });
+  }
 }
 
 export const audio = new AudioManager();

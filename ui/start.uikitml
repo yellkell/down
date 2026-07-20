@@ -1,131 +1,64 @@
 <style>
-  .shell {
+  .panel {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 58;
-    padding: 0.8;
-    background-color: #02030a;
-    border-color: #ff3df2;
-    border-width: 0.22;
-    border-radius: 0.8;
-  }
-  .topbar {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    width: 100%;
-    padding: 1.2;
-    background-color: #12102a;
+    width: 52;
+    padding: 3;
+    background-color: #03040b;
     border-color: #29f3ff;
-    border-width: 0.1;
-  }
-  .kicker {
-    font-size: 1.7;
-    font-weight: bold;
-    letter-spacing: 0.45;
-    color: #29f3ff;
-  }
-  .armed {
-    font-size: 1.7;
-    font-weight: bold;
-    letter-spacing: 0.35;
-    color: #54ff7a;
-  }
-  .core {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    padding: 2.4;
-    margin-top: 0.8;
-    background-color: #060713;
-    border-color: #27234b;
-    border-width: 0.12;
-  }
-  .eyebrow {
-    font-size: 1.8;
-    font-weight: bold;
-    letter-spacing: 0.8;
-    color: #ff3df2;
-    text-align: center;
+    border-width: 0.14;
+    border-radius: 0.55;
   }
   .title {
-    font-size: 5.4;
+    font-size: 5.8;
     font-weight: bold;
-    letter-spacing: 0.8;
-    color: #e8ecff;
+    letter-spacing: 0.45;
+    color: #ffffff;
     text-align: center;
-    margin-top: 0.7;
   }
-  .sub {
-    font-size: 2;
-    letter-spacing: 0.35;
-    color: #9ba0b5;
-    text-align: center;
-    margin-top: 1;
-  }
-  .safety-box {
+  .warning {
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 92%;
     padding: 1.5;
-    margin-top: 2;
-    background-color: #130b14;
-    border-color: #ff8f66;
-    border-width: 0.12;
+    margin-top: 2.2;
+    background-color: #11121c;
+    border-color: #ffb347;
+    border-width: 0.1;
   }
-  .safety {
+  .warning-line {
     font-size: 1.9;
     font-weight: bold;
-    letter-spacing: 0.35;
-    color: #ffb347;
+    letter-spacing: 0.25;
+    color: #ffffff;
     text-align: center;
+  }
+  .recenter {
+    margin-top: 0.45;
   }
   #begin-btn {
-    width: 94%;
-    padding: 2.5;
-    margin-top: 2.4;
+    width: 92%;
+    padding: 2.3;
+    margin-top: 2.2;
     background-color: #29f3ff;
     color: #02030a;
-    border-color: #e8ecff;
-    border-width: 0.12;
+    border-color: #ffffff;
+    border-width: 0.1;
     border-radius: 0.35;
-    font-size: 3.3;
+    font-size: 3.1;
     font-weight: bold;
+    letter-spacing: 0.45;
     text-align: center;
-    letter-spacing: 0.8;
     cursor: pointer;
   }
-  .hint {
-    font-size: 1.55;
-    color: #777b94;
-    text-align: center;
-    letter-spacing: 0.3;
-    margin-top: 1.35;
-  }
-  .rail {
-    width: 100%;
-    padding: 0.55;
-    margin-top: 0.8;
-    background-color: #ff3df2;
-  }
 </style>
-<div class="shell">
-  <div class="topbar">
-    <span class="kicker">// DROP CONTROL 01</span>
-    <span class="armed">[ SYSTEM ARMED ]</span>
+<div class="panel">
+  <span class="title">READY TO GO?</span>
+  <div class="warning">
+    <span class="warning-line">CLEAR A 2M X 2M SPACE</span>
+    <span class="warning-line recenter">STAND AT CENTER AND RECENTER</span>
   </div>
-  <div class="core">
-    <span class="eyebrow">UNLICENSED VERTICAL TRANSIT</span>
-    <span class="title">READY TO DROP?</span>
-    <span class="sub">THREE SECTORS. TWO SLIDES. ONE WAY DOWN.</span>
-    <div class="safety-box">
-      <span class="safety">CLEAR 2M X 2M // STAND AT CENTER</span>
-    </div>
-    <button id="begin-btn">&gt;&gt; BEGIN DESCENT</button>
-    <span class="hint">AIM + TRIGGER // COMMIT WHEN READY</span>
-  </div>
-  <div class="rail"></div>
+  <button id="begin-btn">BEGIN DESCENT</button>
 </div>

@@ -42,15 +42,15 @@
         pointer-events: none;
         user-select: none;
       }
-      /* Small corner logo shown during play */
       #wordmark {
-        top: 20px;
-        left: 24px;
+        top: 18px;
+        left: 22px;
       }
       #wordmark img {
-        width: 150px;
-        opacity: 0.9;
-        filter: drop-shadow(0 0 10px rgba(41, 243, 255, 0.35));
+        display: block;
+        width: 190px;
+        height: auto;
+        filter: drop-shadow(0 0 13px rgba(41, 243, 255, 0.42));
       }
       #hint {
         bottom: 20px;
@@ -82,13 +82,24 @@
         opacity: 0;
         pointer-events: none;
       }
-      #intro .logo {
-        width: min(64vw, 620px);
-        max-height: 42vh;
-        object-fit: contain;
-        filter: drop-shadow(0 0 30px rgba(41, 243, 255, 0.35))
-          drop-shadow(0 0 60px rgba(255, 61, 242, 0.25));
+      #intro .logo-frame {
+        position: relative;
+        width: min(90vw, 920px);
+        height: min(42vh, 310px);
+        overflow: visible;
+        pointer-events: none;
         animation: floaty 5s ease-in-out infinite;
+      }
+      #intro .logo {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        display: block;
+        width: 100%;
+        height: auto;
+        transform: translateY(-50%);
+        filter: drop-shadow(0 0 24px rgba(41, 243, 255, 0.4))
+          drop-shadow(0 0 48px rgba(255, 61, 242, 0.28));
       }
       @keyframes floaty {
         0%,
@@ -226,7 +237,9 @@
     </div>
 
     <div id="intro" hidden>
-      <img class="logo" src="./textures/down-logo.png" alt="DOWN" />
+      <div class="logo-frame">
+        <img class="logo" src="./textures/down-logo.png" alt="DOWN" />
+      </div>
       <div class="buttons">
         <button id="enter-vr">ENTER VR</button>
         <button id="play-browser">PREVIEW IN BROWSER</button>

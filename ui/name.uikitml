@@ -1,164 +1,110 @@
 <style>
-  .shell {
+  .panel {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 72;
-    padding: 0.8;
-    background-color: #02030a;
+    width: 70;
+    padding: 2.4;
+    background-color: #03040b;
     border-color: #ff3df2;
-    border-width: 0.2;
+    border-width: 0.14;
     border-radius: 0.5;
   }
-  .header {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    width: 100%;
-    padding: 1;
-    background-color: #14102a;
-  }
-  .header-text {
-    font-size: 1.6;
+  .title {
+    font-size: 3.8;
     font-weight: bold;
     letter-spacing: 0.5;
-    color: #29f3ff;
-  }
-  .online {
-    font-size: 1.6;
-    font-weight: bold;
-    letter-spacing: 0.45;
-    color: #54ff7a;
-  }
-  .core {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    padding: 2;
-    margin-top: 0.7;
-    background-color: #060713;
-    border-color: #282650;
-    border-width: 0.1;
-  }
-  .title {
-    font-size: 4;
-    font-weight: bold;
-    letter-spacing: 0.85;
-    color: #54ff7a;
+    color: #ffffff;
     text-align: center;
-  }
-  .sub {
-    font-size: 1.55;
-    letter-spacing: 0.45;
-    color: #9ba0b5;
-    text-align: center;
-    margin-top: 0.5;
   }
   #name-display {
-    width: 94%;
-    padding: 1.5;
-    margin-top: 1.45;
-    background-color: #0b0b1c;
+    width: 92%;
+    padding: 1.35;
+    margin-top: 1.4;
+    background-color: #0b0c15;
     border-color: #29f3ff;
-    border-width: 0.14;
-    border-radius: 0.3;
-    font-size: 3.5;
+    border-width: 0.1;
+    border-radius: 0.25;
+    font-size: 3.3;
     font-weight: bold;
-    letter-spacing: 1.25;
-    color: #29f3ff;
+    letter-spacing: 1;
+    color: #ffffff;
     text-align: center;
   }
   .row {
     display: flex;
     flex-direction: row;
-    margin-top: 0.85;
+    margin-top: 0.75;
   }
   .key {
-    width: 5.35;
-    padding: 1.25;
-    margin-left: 0.35;
-    margin-right: 0.35;
-    background-color: #12132c;
-    border-color: #3d3a70;
-    border-width: 0.1;
-    border-radius: 0.25;
-    font-size: 2.5;
+    width: 5.2;
+    padding: 1.15;
+    margin-left: 0.3;
+    margin-right: 0.3;
+    background-color: #11121c;
+    border-color: #3c3f55;
+    border-width: 0.08;
+    border-radius: 0.2;
+    font-size: 2.35;
     font-weight: bold;
-    color: #e8ecff;
+    color: #ffffff;
     text-align: center;
     cursor: pointer;
   }
   .key-wide {
-    width: 18;
-    padding: 1.2;
-    margin-left: 0.4;
-    margin-right: 0.4;
-    background-color: #151128;
-    border-color: #ff3df2;
-    border-width: 0.1;
-    border-radius: 0.25;
-    font-size: 2;
+    width: 17;
+    padding: 1.15;
+    margin-left: 0.35;
+    margin-right: 0.35;
+    background-color: #11121c;
+    border-color: #3c3f55;
+    border-width: 0.08;
+    border-radius: 0.2;
+    font-size: 1.85;
     font-weight: bold;
-    color: #ff3df2;
+    color: #ffffff;
     text-align: center;
     cursor: pointer;
   }
   #tag-btn {
-    width: 28;
-    padding: 1.65;
-    margin-left: 0.45;
-    margin-right: 0.45;
+    width: 25;
+    padding: 1.5;
+    margin-left: 0.4;
+    margin-right: 0.4;
     background-color: #54ff7a;
     color: #02030a;
-    border-color: #e8ecff;
-    border-width: 0.1;
-    border-radius: 0.3;
-    font-size: 2.75;
+    border-color: #ffffff;
+    border-width: 0.08;
+    border-radius: 0.25;
+    font-size: 2.5;
     font-weight: bold;
     text-align: center;
-    letter-spacing: 0.65;
     cursor: pointer;
   }
   #skip-btn {
-    margin-top: 1.2;
-    font-size: 1.65;
-    letter-spacing: 0.45;
-    color: #777b94;
+    margin-top: 1;
+    font-size: 1.6;
+    color: #9ba0b5;
     text-align: center;
     cursor: pointer;
   }
-  .rail {
-    width: 100%;
-    padding: 0.45;
-    margin-top: 0.7;
-    background-color: #ff3df2;
-  }
 </style>
-<div class="shell">
-  <div class="header">
-    <span class="header-text">// IDENTITY UPLINK</span>
-    <span class="online">[ WALL ONLINE ]</span>
+<div class="panel">
+  <span class="title">LEAVE YOUR MARK</span>
+  <span id="name-display">_</span>
+  <div class="row">
+    <button id="key-Q" class="key">Q</button><button id="key-W" class="key">W</button><button id="key-E" class="key">E</button><button id="key-R" class="key">R</button><button id="key-T" class="key">T</button><button id="key-Y" class="key">Y</button><button id="key-U" class="key">U</button><button id="key-I" class="key">I</button><button id="key-O" class="key">O</button><button id="key-P" class="key">P</button>
   </div>
-  <div class="core">
-    <span class="title">LEAVE YOUR MARK</span>
-    <span class="sub">YOUR TAG JOINS THE FINISH-ZONE ARCHIVE</span>
-    <span id="name-display">_</span>
-    <div class="row">
-      <button id="key-Q" class="key">Q</button><button id="key-W" class="key">W</button><button id="key-E" class="key">E</button><button id="key-R" class="key">R</button><button id="key-T" class="key">T</button><button id="key-Y" class="key">Y</button><button id="key-U" class="key">U</button><button id="key-I" class="key">I</button><button id="key-O" class="key">O</button><button id="key-P" class="key">P</button>
-    </div>
-    <div class="row">
-      <button id="key-A" class="key">A</button><button id="key-S" class="key">S</button><button id="key-D" class="key">D</button><button id="key-F" class="key">F</button><button id="key-G" class="key">G</button><button id="key-H" class="key">H</button><button id="key-J" class="key">J</button><button id="key-K" class="key">K</button><button id="key-L" class="key">L</button>
-    </div>
-    <div class="row">
-      <button id="key-Z" class="key">Z</button><button id="key-X" class="key">X</button><button id="key-C" class="key">C</button><button id="key-V" class="key">V</button><button id="key-B" class="key">B</button><button id="key-N" class="key">N</button><button id="key-M" class="key">M</button>
-    </div>
-    <div class="row">
-      <button id="key-space" class="key-wide">SPACE</button>
-      <button id="key-del" class="key-wide">DELETE</button>
-    </div>
-    <div class="row"><button id="tag-btn">SPRAY TO WALL</button></div>
-    <button id="skip-btn">SKIP UPLINK // REMAIN ANONYMOUS</button>
+  <div class="row">
+    <button id="key-A" class="key">A</button><button id="key-S" class="key">S</button><button id="key-D" class="key">D</button><button id="key-F" class="key">F</button><button id="key-G" class="key">G</button><button id="key-H" class="key">H</button><button id="key-J" class="key">J</button><button id="key-K" class="key">K</button><button id="key-L" class="key">L</button>
   </div>
-  <div class="rail"></div>
+  <div class="row">
+    <button id="key-Z" class="key">Z</button><button id="key-X" class="key">X</button><button id="key-C" class="key">C</button><button id="key-V" class="key">V</button><button id="key-B" class="key">B</button><button id="key-N" class="key">N</button><button id="key-M" class="key">M</button>
+  </div>
+  <div class="row">
+    <button id="key-space" class="key-wide">SPACE</button>
+    <button id="key-del" class="key-wide">DELETE</button>
+  </div>
+  <div class="row"><button id="tag-btn">SAVE</button></div>
+  <button id="skip-btn">SKIP</button>
 </div>
