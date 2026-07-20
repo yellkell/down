@@ -63,6 +63,11 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     spatialUI: true
   }
 }).then((world) => {
+  // Three.js defaults WebXR to maximum fixed foveation. On Quest that
+  // produces a visible, head-locked dark band in this high-contrast scene.
+  // Keep it disabled for the current and subsequent XR projection layers.
+  world.renderer.xr.setFoveation(0);
+
   const { scene, player } = world;
 
   scene.fog = new FogExp2(0x050510, 0.002); // the original's density — the deep world stays hidden until you're in it
