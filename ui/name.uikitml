@@ -1,0 +1,136 @@
+<style>
+  .panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 66;
+    padding: 3;
+    background-color: #05050d;
+    border-color: #54ff7a;
+    border-width: 0.18;
+    border-radius: 2.5;
+  }
+  .title {
+    font-size: 3.6;
+    font-weight: bold;
+    letter-spacing: 1;
+    color: #54ff7a;
+    text-align: center;
+    margin-top: 0.4;
+  }
+  #name-display {
+    width: 100%;
+    padding: 1.6;
+    margin-top: 1.6;
+    background-color: #0b0b1c;
+    border-color: #29f3ff;
+    border-width: 0.12;
+    border-radius: 1.2;
+    font-size: 3.4;
+    font-weight: bold;
+    letter-spacing: 1.2;
+    color: #29f3ff;
+    text-align: center;
+  }
+  .row {
+    display: flex;
+    flex-direction: row;
+    margin-top: 1.1;
+  }
+  .key {
+    width: 5.2;
+    padding: 1.3;
+    margin-left: 0.45;
+    margin-right: 0.45;
+    background-color: #12122b;
+    border-color: #2a2a55;
+    border-width: 0.1;
+    border-radius: 1;
+    font-size: 2.6;
+    font-weight: bold;
+    color: #e8ecff;
+    text-align: center;
+    cursor: pointer;
+  }
+  .key-wide {
+    width: 17;
+    padding: 1.3;
+    margin-left: 0.45;
+    margin-right: 0.45;
+    background-color: #12122b;
+    border-color: #2a2a55;
+    border-width: 0.1;
+    border-radius: 1;
+    font-size: 2.2;
+    font-weight: bold;
+    color: #9ba0b5;
+    text-align: center;
+    cursor: pointer;
+  }
+  #tag-btn {
+    width: 26;
+    padding: 1.6;
+    margin-left: 0.45;
+    margin-right: 0.45;
+    background-color: #54ff7a;
+    color: #03060a;
+    border-radius: 1.2;
+    font-size: 2.8;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 0.6;
+    cursor: pointer;
+  }
+  #skip-btn {
+    margin-top: 1.3;
+    font-size: 1.8;
+    letter-spacing: 0.4;
+    color: #9ba0b5;
+    text-align: center;
+    cursor: pointer;
+  }
+</style>
+<div class="panel">
+  <span class="title">LEAVE YOUR MARK</span>
+  <span id="name-display">_</span>
+  <div class="row">
+    <button id="key-Q" class="key">Q</button>
+    <button id="key-W" class="key">W</button>
+    <button id="key-E" class="key">E</button>
+    <button id="key-R" class="key">R</button>
+    <button id="key-T" class="key">T</button>
+    <button id="key-Y" class="key">Y</button>
+    <button id="key-U" class="key">U</button>
+    <button id="key-I" class="key">I</button>
+    <button id="key-O" class="key">O</button>
+    <button id="key-P" class="key">P</button>
+  </div>
+  <div class="row">
+    <button id="key-A" class="key">A</button>
+    <button id="key-S" class="key">S</button>
+    <button id="key-D" class="key">D</button>
+    <button id="key-F" class="key">F</button>
+    <button id="key-G" class="key">G</button>
+    <button id="key-H" class="key">H</button>
+    <button id="key-J" class="key">J</button>
+    <button id="key-K" class="key">K</button>
+    <button id="key-L" class="key">L</button>
+  </div>
+  <div class="row">
+    <button id="key-Z" class="key">Z</button>
+    <button id="key-X" class="key">X</button>
+    <button id="key-C" class="key">C</button>
+    <button id="key-V" class="key">V</button>
+    <button id="key-B" class="key">B</button>
+    <button id="key-N" class="key">N</button>
+    <button id="key-M" class="key">M</button>
+  </div>
+  <div class="row">
+    <button id="key-space" class="key-wide">SPACE</button>
+    <button id="key-del" class="key-wide">DELETE</button>
+  </div>
+  <div class="row">
+    <button id="tag-btn">SPRAY IT</button>
+  </div>
+  <button id="skip-btn">JUST PASSING THROUGH — SKIP</button>
+</div>

@@ -3,6 +3,7 @@ import { createSystem, Group, Vector3 } from '@iwsdk/core';
 import { SLIDE_SPEED } from '../constants.js';
 import type { CloudHandles } from '../env/clouds.js';
 import type { Confetti, SignBoard } from '../env/extras.js';
+import type { GraffitiField } from '../env/graffiti.js';
 import type { PlatformHandles } from '../env/platform.js';
 import type { SkyHandles } from '../env/sky.js';
 import type { CityHandles } from '../env/structures.js';
@@ -19,6 +20,8 @@ export interface EnvHandles {
   clouds: CloudHandles;
   /** Hidden until the final drop begins. */
   finish: Group;
+  /** "X WAS HERE" marks sprayed through the finish zone. */
+  graffiti: GraffitiField;
 }
 
 /**

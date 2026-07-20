@@ -24,6 +24,7 @@ import {
   TOTAL_ROUNDS,
   WINNER_HEIGHT
 } from '../constants.js';
+import { NAME_MAX, submitMark } from '../marks.js';
 import { emit, game, on, resetGameState } from '../state.js';
 import type { EnvHandles } from './environment.js';
 import { GridSpawnerSystem } from './spawner.js';
@@ -34,6 +35,7 @@ export interface PanelEntities {
   hud: Entity;
   end: Entity;
   warn: Entity;
+  name: Entity;
 }
 
 /**
@@ -56,6 +58,10 @@ export class GameSystem extends createSystem({
   warnPanel: {
     required: [PanelUI, PanelDocument],
     where: [eq(PanelUI, 'config', './ui/warn.json')]
+  },
+  namePanel: {
+    required: [PanelUI, PanelDocument],
+    where: [eq(PanelUI, 'config', './ui/name.json')]
   }
 }) {
   private headWorld = new Vector3();
@@ -69,6 +75,7 @@ export class GameSystem extends createSystem({
   private warnText: UIKit.Text | null = null;
   private endTitle: UIKit.Text | null = null;
   private endStats: UIKit.Text | null = null;
+  private nameDisplay: UIKit.Text | null = null;
 
   private hudCache: Record<string, string> = {};
   private warnTimer = 0;
@@ -83,6 +90,12 @@ export class GameSystem extends createSystem({
   private lobbyActive = false;
   /** Seconds since the lobby appeared — arms the trigger-to-begin. */
   private lobbyArm = 0;
+  /** Post-win celebration beat before the keyboard rises. */
+  private winWait = 0;
+  /** The LEAVE YOUR MARK keyboard is up — trigger shortcuts disabled. */
+  private nameActive = false;
+  /** The name being typed on the finish-line keyboard. */
+  private nameBuf = '';
 
   private get panels(): PanelEntities {
     return this.globals.panels as PanelEntities;
@@ -97,9 +110,20 @@ export class GameSystem extends createSystem({
     this.wireHudPanel();
     this.wireEndPanel();
     this.wireWarnPanel();
+    this.wireNamePanel();
 
     on('slide-complete', () => this.onSlideComplete());
     on('final-slide-complete', () => this.onWin());
+
+    // Desktop spectators have no controller ray to poke the VR keyboard
+    // with — their real keyboard drives the tag entry instead.
+    window.addEventListener('keydown', (e) => {
+      if (!this.nameActive) return;
+      if (e.key === 'Enter') this.sprayIt();
+      else if (e.key === 'Backspace') this.deleteChar();
+      else if (e.key === 'Escape') this.skipTag();
+      else if (/^[a-zA-Z0-9 ]$/.test(e.key)) this.typeChar(e.key.toUpperCase());
+    });
   }
 
   /** Start immediately — used by the 2D "PREVIEW IN BROWSER" (desktop). */
@@ -180,6 +204,24 @@ export class GameSystem extends createSystem({
     });
   }
 
+  private wireNamePanel(): void {
+    this.queries.namePanel.subscribe('qualify', (entity) => {
+      const doc = this.getDocument(entity);
+      if (!doc) return;
+      this.nameDisplay = doc.getElementById('name-display') as UIKit.Text;
+      const wire = (id: string, fn: () => void): void => {
+        (doc.getElementById(id) as UIKit.Text | null)?.addEventListener('click', fn);
+      };
+      for (const ch of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+        wire(`key-${ch}`, () => this.typeChar(ch));
+      }
+      wire('key-space', () => this.typeChar(' '));
+      wire('key-del', () => this.deleteChar());
+      wire('tag-btn', () => this.sprayIt());
+      wire('skip-btn', () => this.skipTag());
+    });
+  }
+
   private setPanelVisible(entity: Entity | undefined, visible: boolean): void {
     if (!entity) return;
     if (entity.object3D) entity.object3D.visible = visible;
@@ -237,6 +279,74 @@ export class GameSystem extends createSystem({
     if (shown) this.bringPanelToFront(entity);
   }
 
+  /** ...and for the finish-line keyboard. */
+  private setNamePanelShown(shown: boolean): void {
+    const entity = this.panels?.name;
+    if (!entity?.object3D) return;
+    entity.object3D.position.set(0, shown ? 1.45 : -9999, -1.75);
+    if (shown) this.bringPanelToFront(entity);
+  }
+
+  // -- The finish-line keyboard ---------------------------------------------
+
+  private updateNameDisplay(): void {
+    const caret = this.nameBuf.length < NAME_MAX ? '_' : '';
+    this.nameDisplay?.setProperties({ text: `${this.nameBuf}${caret}` });
+  }
+
+  private typeChar(ch: string): void {
+    if (!this.nameActive || this.nameBuf.length >= NAME_MAX) return;
+    if (ch === ' ' && this.nameBuf.length === 0) return; // no leading space
+    this.nameBuf += ch;
+    audio.play('square', 0.25);
+    this.updateNameDisplay();
+  }
+
+  private deleteChar(): void {
+    if (!this.nameActive || this.nameBuf.length === 0) return;
+    this.nameBuf = this.nameBuf.slice(0, -1);
+    audio.play('square', 0.18);
+    this.updateNameDisplay();
+  }
+
+  /**
+   * The moment: the name flies out of the keyboard and onto the world.
+   * The tag sprays in above the pad while the panel drops away, the mark is
+   * committed to the wall in the background, and only after a beat to admire
+   * it does the regular end panel come up.
+   */
+  private sprayIt(): void {
+    if (!this.nameActive) return;
+    const name = this.nameBuf.trim();
+    if (!name) return; // nothing typed — the caret keeps blinking at them
+    this.setNamePanelShown(false);
+    void submitMark(name); // fire-and-forget; the wall catches up next visit
+    const env = this.env;
+    if (env) {
+      const tag = env.graffiti.spawnPersonal(name);
+      // Finish-local placement: floating just ahead of the landed player,
+      // above where the end panel will rise, facing them.
+      const p = this.player.position;
+      const f = env.finish.position;
+      tag.position.set(p.x - f.x, p.y - f.y + 2.5, p.z - f.z - 4.2);
+      tag.rotation.x = 0.18;
+    }
+    audio.play('nice');
+    window.setTimeout(() => {
+      this.nameActive = false;
+      this.setEndPanelShown(true);
+      this.endArm = 0;
+    }, 2400);
+  }
+
+  private skipTag(): void {
+    if (!this.nameActive) return;
+    this.nameActive = false;
+    this.setNamePanelShown(false);
+    this.setEndPanelShown(true);
+    this.endArm = 0;
+  }
+
   private setHud(key: 'round' | 'timer' | 'alt' | 'status', value: string): void {
     if (this.hudCache[key] === value) return;
     this.hudCache[key] = value;
@@ -280,6 +390,10 @@ export class GameSystem extends createSystem({
     if (this.env) this.env.finish.visible = false;
     this.player.position.set(0, PHASE_HEIGHTS[0], 0);
     this.setEndPanelShown(false);
+    this.setNamePanelShown(false);
+    this.winWait = 0;
+    this.nameActive = false;
+    this.nameBuf = '';
     this.setPanelVisible(this.panels?.hud, true);
     this.setPointersVisible(false);
     this.hudCache = {};
@@ -350,7 +464,12 @@ export class GameSystem extends createSystem({
     });
     this.setPanelVisible(this.panels?.hud, false);
     this.setPanelVisible(this.panels?.warn, false);
-    this.setEndPanelShown(true);
+
+    // Let the landing breathe — confetti and the finish sign get a few
+    // seconds to themselves before the LEAVE YOUR MARK keyboard rises.
+    this.winWait = 3.4;
+    this.nameBuf = '';
+    this.updateNameDisplay();
     this.setPointersVisible(true);
     this.endArm = 0;
   }
@@ -410,6 +529,19 @@ export class GameSystem extends createSystem({
 
   update(delta: number): void {
     if (game.phase === 'WIN' || game.phase === 'GAME_OVER') {
+      // Post-win celebration beat, then the keyboard rises.
+      if (this.winWait > 0) {
+        this.winWait -= delta;
+        if (this.winWait <= 0) {
+          this.nameActive = true;
+          this.updateNameDisplay();
+          this.setNamePanelShown(true);
+        }
+        return;
+      }
+      // While the keyboard is up (or the tag is being admired), no
+      // trigger shortcuts — a stray pull must not restart the run.
+      if (this.nameActive) return;
       // Escape hatch: after a short arm delay, a bare trigger pull on
       // either controller retries — no pointing at the panel required.
       this.endArm += delta;

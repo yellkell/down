@@ -15,10 +15,12 @@ import { audio } from './audio.js';
 import { PHASE_HEIGHTS, SLIDE_ANGLE, WINNER_HEIGHT } from './constants.js';
 import { createClouds } from './env/clouds.js';
 import { Confetti, SignBoard } from './env/extras.js';
+import { GraffitiField } from './env/graffiti.js';
 import { createPlatform } from './env/platform.js';
 import { createSky } from './env/sky.js';
 import { createFinishZone, createMegastructures } from './env/structures.js';
 import { createStreaks } from './env/track.js';
+import { fetchMarks } from './marks.js';
 import { EnvironmentSystem, type EnvHandles } from './systems/environment.js';
 import { GameSystem, type PanelEntities } from './systems/game.js';
 import { GridSpawnerSystem } from './systems/spawner.js';
@@ -94,6 +96,12 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   finish.visible = false;
   scene.add(finish);
 
+  // The graffiti wall: everyone who ever finished, sprayed around the pad.
+  // Loads in the background — the field just starts empty if it can't.
+  const graffiti = new GraffitiField();
+  finish.add(graffiti.group);
+  void fetchMarks().then((names) => graffiti.setMarks(names));
+
   const signs = new SignBoard();
   player.add(signs.group);
 
@@ -111,7 +119,8 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     streaks,
     city,
     clouds,
-    finish
+    finish,
+    graffiti
   } satisfies EnvHandles;
 
   // --- UI panels (compiled from ui/*.uikitml) -----------------------------
@@ -145,11 +154,20 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   warnPanel.object3D!.rotation.x = -0.25;
   warnPanel.object3D!.visible = false;
 
+  // The finish-line keyboard — parked below like the other menus until the
+  // player survives the descent and gets to sign the bottom of the world.
+  const namePanel = world
+    .createTransformEntity(undefined, world.playerEntity)
+    .addComponent(PanelUI, { config: './ui/name.json', maxWidth: 1.65, maxHeight: 1.3 })
+    .addComponent(Interactable);
+  namePanel.object3D!.position.set(0, -9999, -1.75);
+
   world.globals.panels = {
     start: startPanel,
     hud: hudPanel,
     end: endPanel,
-    warn: warnPanel
+    warn: warnPanel,
+    name: namePanel
   } satisfies PanelEntities;
 
   // --- Game --------------------------------------------------------------

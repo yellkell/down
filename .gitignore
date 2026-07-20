@@ -65,3 +65,5 @@ coverage/
 public/gltf/generated/
 public/glxf/
 public/ui/
+# Firebase deploy cache
+.firebase/
