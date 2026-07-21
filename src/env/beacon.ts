@@ -37,7 +37,9 @@ export class SignBoard {
   private readonly altitudeContext: CanvasRenderingContext2D;
   private readonly altitudeTexture: CanvasTexture;
   private readonly scanLine: Mesh;
+  private readonly scanMaterial: MeshBasicMaterial;
   private altitudeValue = -1;
+  private countdownValue: number | null = null;
   private progress = 0;
   private targetProgress = 0;
   private milestonePulse = 0;
@@ -99,13 +101,13 @@ export class SignBoard {
     this.group.add(this.arrow);
 
     const altitudeCanvas = document.createElement('canvas');
-    altitudeCanvas.width = 512;
+    altitudeCanvas.width = 768;
     altitudeCanvas.height = 128;
     this.altitudeContext = altitudeCanvas.getContext('2d')!;
     this.altitudeTexture = new CanvasTexture(altitudeCanvas);
     this.altitudeTexture.colorSpace = SRGBColorSpace;
     const altitudePlate = new Mesh(
-      new PlaneGeometry(1.8, 0.45),
+      new PlaneGeometry(2.8, 0.46),
       new MeshBasicMaterial({
         map: this.altitudeTexture,
         transparent: true,
@@ -114,23 +116,24 @@ export class SignBoard {
         side: DoubleSide
       })
     );
-    altitudePlate.position.set(2.12, 1.78, 0.1);
+    altitudePlate.position.set(1.7, 1.78, 0.1);
     altitudePlate.renderOrder = 35;
     altitudePlate.frustumCulled = false;
     this.group.add(altitudePlate);
-    this.drawAltitude(0);
+    this.drawAltitude(0, null);
 
+    this.scanMaterial = new MeshBasicMaterial({
+      map: drawScanTexture(),
+      transparent: true,
+      opacity: 0.7,
+      blending: AdditiveBlending,
+      depthTest: false,
+      depthWrite: false,
+      side: DoubleSide
+    });
     this.scanLine = new Mesh(
-      new PlaneGeometry(BEACON_W - 0.48, 0.025),
-      new MeshBasicMaterial({
-        color: NEON.cyan,
-        transparent: true,
-        opacity: 0.48,
-        blending: AdditiveBlending,
-        depthTest: false,
-        depthWrite: false,
-        side: DoubleSide
-      })
+      new PlaneGeometry(BEACON_W - 0.5, 0.32),
+      this.scanMaterial
     );
     this.scanLine.position.z = 0.045;
     this.scanLine.renderOrder = 20;
@@ -158,7 +161,8 @@ export class SignBoard {
     dt: number,
     routePosition: number | null,
     mode: RouteMode,
-    altitudeMeters: number
+    altitudeMeters: number,
+    countdown: number | null
   ): void {
     this.time += dt;
     this.group.position.y = 2.4 + Math.sin(this.time * 0.6) * 0.18;
@@ -181,15 +185,17 @@ export class SignBoard {
             : NEON.magenta;
     this.arrowMaterial.color.setHex(routeColor);
     this.arrowGlowMaterial.color.setHex(routeColor);
-    this.drawAltitude(altitudeMeters);
+    this.drawAltitude(altitudeMeters, countdown);
 
     this.milestonePulse = Math.max(0, this.milestonePulse - dt * 1.3);
     const pulse = 1 + this.milestonePulse * 0.28 + Math.sin(this.time * 6) * 0.025;
     this.arrow.scale.setScalar(pulse);
     this.arrowGlowMaterial.opacity = 0.14 + 0.08 * Math.sin(this.time * 5) ** 2;
 
-    const scanT = (this.time * 0.18) % 1;
-    this.scanLine.position.y = -1.75 + scanT * 3.5;
+    const scanT = (this.time * 0.11) % 1;
+    const scanEase = scanT * scanT * (3 - 2 * scanT);
+    this.scanLine.position.y = -1.7 + scanEase * 3.4;
+    this.scanMaterial.opacity = Math.sin(Math.PI * scanT) ** 0.65 * 0.74;
   }
 
   private placeArrow(progress: number): void {
@@ -206,28 +212,79 @@ export class SignBoard {
     this.arrow.rotation.z = Math.atan2(dy, dx);
   }
 
-  private drawAltitude(altitudeMeters: number): void {
+  private drawAltitude(altitudeMeters: number, countdown: number | null): void {
     const altitude = Math.max(0, Math.round(altitudeMeters));
-    if (altitude === this.altitudeValue) return;
+    if (altitude === this.altitudeValue && countdown === this.countdownValue) return;
     this.altitudeValue = altitude;
+    this.countdownValue = countdown;
 
     const ctx = this.altitudeContext;
     const { width, height } = ctx.canvas;
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = 'rgba(2, 3, 12, 0.9)';
-    ctx.fillRect(4, 4, width - 8, height - 8);
-    ctx.strokeStyle = '#29f3ff';
-    ctx.lineWidth = 5;
-    ctx.strokeRect(4, 4, width - 8, height - 8);
-    ctx.font = '700 58px monospace';
-    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.font = '700 58px monospace';
+    ctx.textAlign = 'right';
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = '#29f3ff';
-    ctx.shadowBlur = 12;
-    ctx.fillText(`ALT ${altitude}M`, width / 2, height / 2 + 3);
+    ctx.shadowBlur = 15;
+    ctx.fillText(`ALT ${altitude}M`, width - 12, height / 2 + 3);
+
+    if (countdown !== null) {
+      ctx.font = '800 74px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffb347';
+      ctx.shadowColor = '#ff6a2f';
+      ctx.shadowBlur = 22;
+      ctx.fillText(String(countdown), 84, height / 2 + 2);
+    }
     this.altitudeTexture.needsUpdate = true;
   }
+}
+
+/** A high-resolution luminous sampling band with soft falloff and crisp echoes. */
+function drawScanTexture(): CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d')!;
+
+  const verticalGlow = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  verticalGlow.addColorStop(0, 'rgba(41, 243, 255, 0)');
+  verticalGlow.addColorStop(0.32, 'rgba(41, 243, 255, 0.025)');
+  verticalGlow.addColorStop(0.47, 'rgba(41, 243, 255, 0.16)');
+  verticalGlow.addColorStop(0.5, 'rgba(200, 252, 255, 0.92)');
+  verticalGlow.addColorStop(0.535, 'rgba(41, 243, 255, 0.13)');
+  verticalGlow.addColorStop(1, 'rgba(41, 243, 255, 0)');
+  ctx.fillStyle = verticalGlow;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Fade the band before the cyan frame so it feels embedded in the display.
+  ctx.globalCompositeOperation = 'destination-in';
+  const horizontalFade = ctx.createLinearGradient(0, 0, canvas.width, 0);
+  horizontalFade.addColorStop(0, 'rgba(255,255,255,0)');
+  horizontalFade.addColorStop(0.055, 'rgba(255,255,255,1)');
+  horizontalFade.addColorStop(0.945, 'rgba(255,255,255,1)');
+  horizontalFade.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = horizontalFade;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.globalCompositeOperation = 'lighter';
+  const core = ctx.createLinearGradient(0, 0, canvas.width, 0);
+  core.addColorStop(0, 'rgba(41,243,255,0)');
+  core.addColorStop(0.08, 'rgba(41,243,255,0.72)');
+  core.addColorStop(0.5, 'rgba(235,255,255,1)');
+  core.addColorStop(0.92, 'rgba(41,243,255,0.72)');
+  core.addColorStop(1, 'rgba(41,243,255,0)');
+  ctx.fillStyle = core;
+  ctx.fillRect(0, 62, canvas.width, 3);
+
+  ctx.fillStyle = 'rgba(41,243,255,0.18)';
+  ctx.fillRect(70, 48, canvas.width - 140, 1);
+  ctx.fillRect(70, 79, canvas.width - 140, 1);
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
 }
 
 function drawBeaconTexture(): CanvasTexture {
@@ -312,9 +369,10 @@ function drawBeaconTexture(): CanvasTexture {
     ctx.fillStyle = facetColors[i];
     ctx.fill();
 
+    // The illuminated seam is a single deliberate cut from summit to base.
+    // Following the inner facet anchor gave the middle magenta seam a kink.
     ctx.beginPath();
     ctx.moveTo(peak[0], peak[1]);
-    ctx.lineTo(anchorX, anchorY);
     ctx.lineTo(landing[0] - 18, mountainBase);
     ctx.strokeStyle = i === 0 ? '#29f3ff' : i === 1 ? '#ff3df2' : '#8a2bff';
     ctx.globalAlpha = 0.36;

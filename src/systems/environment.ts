@@ -115,7 +115,11 @@ export class EnvironmentSystem extends createSystem({}) {
     }
 
     const altitude = Math.max(0, Math.round(this.player.position.y - WINNER_HEIGHT));
-    env.signs.update(delta, routePosition, routeMode, altitude);
+    const countdown =
+      game.phase === 'GRID' && game.warning > 0 && game.roundRemaining > 0
+        ? Math.max(1, Math.min(3, Math.ceil(game.roundRemaining)))
+        : null;
+    env.signs.update(delta, routePosition, routeMode, altitude, countdown);
 
     this.player.head.getWorldPosition(this.headWorld);
     env.confetti.update(delta, this.headWorld);
