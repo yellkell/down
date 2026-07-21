@@ -16,6 +16,7 @@ import {
   BARRIER_SIZE,
   BARRIER_SPACING,
   LANE_X,
+  PHASE_HEIGHTS,
   SLIDE_ACCEL_TIME,
   SLIDE_ANGLE,
   SLIDE_SPEED
@@ -63,10 +64,43 @@ export class SlideSystem extends createSystem({}) {
     BARRIER_SIZE.d
   );
   private barrierEdges = new EdgesGeometry(this.barrierGeometry);
+  private barrierFill = new MeshBasicMaterial({
+    color: 0x02020a,
+    transparent: true,
+    opacity: 0.88
+  });
+  private warmup: Group | null = null;
+  private warmupTrack: TrackHandles | null = null;
+  private warmupWire: LineBasicMaterial | null = null;
+  private warmupTimer = 3;
 
   init(): void {
     on('game-over', () => this.endSlide(false));
     on('game-reset', () => this.endSlide(true));
+    this.spawnWarmup();
+  }
+
+  /**
+   * Render every slide-course material once at boot, microscopically. A
+   * slide track is otherwise first drawn the moment a slide launches, and
+   * the shader compiles / pipeline setup right then drop frames — which in
+   * VR reads as the whole world flickering through the descent's first
+   * seconds (worst on slide 1, when nothing was cached yet).
+   */
+  private spawnWarmup(): void {
+    const group = new Group();
+    this.warmupTrack = createSlideTrack(4);
+    group.add(this.warmupTrack.group);
+    const barrier = this.spawnBarrier(0, 0, 0);
+    barrier.removeFromParent();
+    this.barriers.pop();
+    this.warmupWire = this.barrierWires.pop()?.material ?? null;
+    group.add(barrier);
+    group.scale.setScalar(0.001); // sub-centimetre: draws, but invisible
+    group.position.set(0, PHASE_HEIGHTS[0] - 2, -2);
+    group.traverse((node) => (node.frustumCulled = false));
+    this.scene.add(group);
+    this.warmup = group;
   }
 
   getBarriers(): Group[] {
@@ -128,10 +162,7 @@ export class SlideSystem extends createSystem({}) {
     const group = new Group();
     group.position.set(x, y, z);
 
-    const fill = new Mesh(
-      this.barrierGeometry,
-      new MeshBasicMaterial({ color: 0x02020a, transparent: true, opacity: 0.88 })
-    );
+    const fill = new Mesh(this.barrierGeometry, this.barrierFill);
     fill.scale.setScalar(0.94);
     group.add(fill);
 
@@ -192,6 +223,17 @@ export class SlideSystem extends createSystem({}) {
   }
 
   update(delta: number, time: number): void {
+    if (this.warmup) {
+      this.warmupTimer -= delta;
+      if (this.warmupTimer <= 0) {
+        this.warmup.removeFromParent();
+        this.warmupTrack?.dispose();
+        this.warmupWire?.dispose();
+        this.warmup = null;
+        this.warmupTrack = null;
+        this.warmupWire = null;
+      }
+    }
     if (this.track) this.track.uniforms.uTime.value = time / 1000;
     if (this.track || this.barrierWires.length > 0) this.fadeCourseDetail();
     if (!this.active) return;

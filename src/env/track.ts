@@ -26,6 +26,17 @@ export interface TrackHandles {
   dispose: () => void;
 }
 
+// The heavy GPU resources live at module scope and are built exactly once:
+// a slide track is created at the MOMENT a slide launches, and paying a
+// shader compile or geometry upload right then drops frames — which in VR
+// reads as the whole world flickering through the first seconds of descent.
+const ribbonUniforms = { uTime: { value: 0 }, uLength: { value: 1 } };
+let ribbonMaterial: ShaderMaterial | null = null;
+let ribbonGeometry: PlaneGeometry | null = null;
+let railGeometry: BoxGeometry | null = null;
+let railMaterial: MeshBasicMaterial | null = null;
+let hoopGeometry: TorusGeometry | null = null;
+
 /**
  * A neon half-pipe of light, generated at slide start from wherever the rig
  * is to wherever it's going. Local -Z runs downhill; the group is pitched
@@ -34,15 +45,16 @@ export interface TrackHandles {
 export function createSlideTrack(length: number): TrackHandles {
   const group = new Group();
   group.rotation.x = -SLIDE_ANGLE;
-  const uniforms = { uTime: { value: 0 } };
+  ribbonUniforms.uLength.value = length; // only one track exists at a time
+  const uniforms = { uTime: ribbonUniforms.uTime };
   const disposables: Array<{ dispose: () => void }> = [];
 
   // --- Ribbon -----------------------------------------------------------
-  const ribbonMaterial = new ShaderMaterial({
+  ribbonMaterial ??= new ShaderMaterial({
     transparent: true,
     depthWrite: false,
     side: DoubleSide,
-    uniforms: { ...uniforms, uLength: { value: length } },
+    uniforms: ribbonUniforms,
     vertexShader: /* glsl */ `
       varying vec2 vUv;
       varying vec2 vLocal;
@@ -106,35 +118,35 @@ export function createSlideTrack(length: number): TrackHandles {
       }
     `
   });
-  const ribbon = new Mesh(new PlaneGeometry(2.3, length, 1, 1), ribbonMaterial);
+  // Unit plane stretched to the slide length — geometry is never rebuilt.
+  ribbonGeometry ??= new PlaneGeometry(2.3, 1, 1, 1);
+  const ribbon = new Mesh(ribbonGeometry, ribbonMaterial);
   ribbon.rotation.x = -Math.PI / 2;
+  ribbon.scale.y = length;
   ribbon.position.set(0, -0.02, -length / 2);
   group.add(ribbon);
-  disposables.push(ribbon.geometry, ribbonMaterial);
 
   // (The "LOOK FORWARD" cue is the riser that rises from under the platform
   // before the slide — it is deliberately NOT written on the track ribbon.)
 
   // --- Rails ------------------------------------------------------------
-  const railGeometry = new BoxGeometry(0.06, 0.06, length);
+  railGeometry ??= new BoxGeometry(0.06, 0.06, 1);
+  railMaterial ??= new MeshBasicMaterial({
+    color: NEON.cyan,
+    blending: AdditiveBlending,
+    transparent: true,
+    opacity: 0.85,
+    depthWrite: false
+  });
   [-1.15, 1.15].forEach((x) => {
-    const rail = new Mesh(
-      railGeometry,
-      new MeshBasicMaterial({
-        color: NEON.cyan,
-        blending: AdditiveBlending,
-        transparent: true,
-        opacity: 0.85,
-        depthWrite: false
-      })
-    );
+    const rail = new Mesh(railGeometry!, railMaterial!);
+    rail.scale.z = length;
     rail.position.set(x, 0.05, -length / 2);
     group.add(rail);
   });
-  disposables.push(railGeometry);
 
   // --- Energy hoops every 40m — motion + progress cue ------------------
-  const hoopGeometry = new TorusGeometry(1.7, 0.035, 10, 48);
+  hoopGeometry ??= new TorusGeometry(1.7, 0.035, 10, 48);
   const hoopCount = Math.floor(length / 40);
   const hoops: TrackHandles['hoops'] = [];
   for (let i = 1; i <= hoopCount; i++) {
@@ -150,11 +162,12 @@ export function createSlideTrack(length: number): TrackHandles {
     hoop.position.set(0, 1.3, -i * 40);
     group.add(hoop);
     hoops.push({ mesh: hoop, material, baseOpacity: 0.75 });
+    disposables.push(material);
     const glow = makeGlow(color, 4.5, 0.2);
     glow.position.copy(hoop.position);
     group.add(glow);
+    disposables.push(glow.material);
   }
-  disposables.push(hoopGeometry);
 
   return {
     group,
@@ -162,6 +175,8 @@ export function createSlideTrack(length: number): TrackHandles {
     hoops,
     dispose: () => {
       group.removeFromParent();
+      // Only the per-slide hoop/glow materials die here — the ribbon
+      // program, rail material, and geometries are module singletons.
       disposables.forEach((d) => d.dispose());
     }
   };

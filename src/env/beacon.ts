@@ -213,7 +213,11 @@ export class SignBoard {
   }
 
   private drawAltitude(altitudeMeters: number, countdown: number | null): void {
-    const altitude = Math.max(0, Math.round(altitudeMeters));
+    // 2m steps: during a slide the altitude spins ~11m/s, and each change
+    // is a full canvas redraw (shadow-blurred text) plus a texture upload.
+    // Halving the cadence keeps the readout lively without eating frame
+    // budget mid-descent.
+    const altitude = Math.max(0, Math.round(altitudeMeters / 2) * 2);
     if (altitude === this.altitudeValue && countdown === this.countdownValue) return;
     this.altitudeValue = altitude;
     this.countdownValue = countdown;
