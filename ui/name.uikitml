@@ -6,7 +6,7 @@
     width: 70;
     padding: 2.4;
     background-color: #03040b;
-    border-color: #ff3df2;
+    border-color: #29f3ff;
     border-width: 0.14;
     border-radius: 0.5;
   }
@@ -14,7 +14,7 @@
     font-size: 4;
     font-weight: bold;
     letter-spacing: 0.72;
-    color: #ffd7fb;
+    color: #dffcff;
     text-align: center;
   }
   #name-display {

@@ -366,10 +366,10 @@ export class GameSystem extends createSystem({
       text === 'LOOK DOWN'
         ? { color: '#dffcff', fontSize: 6.8, letterSpacing: 1.1 }
         : text === 'SLIDE'
-          ? { color: '#ffe0a3', fontSize: 7.4, letterSpacing: 1.35 }
+          ? { color: '#dffcff', fontSize: 7.4, letterSpacing: 1.35 }
           : text === 'FINAL DROP'
-            ? { color: '#ffd2fb', fontSize: 5.8, letterSpacing: 0.85 }
-            : { color: '#fff0fe', fontSize: 7, letterSpacing: 1 };
+            ? { color: '#dffcff', fontSize: 5.8, letterSpacing: 0.85 }
+            : { color: '#dffcff', fontSize: 7, letterSpacing: 1 };
     this.warnText?.setProperties({ text, ...style });
     this.setPanelVisible(this.panels?.warn, true);
     this.warnTimer = seconds;
