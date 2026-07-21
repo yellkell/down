@@ -16,6 +16,8 @@ import { NEON } from '../constants.js';
 
 const BEACON_W = 6.4;
 const BEACON_H = 4.35;
+const MOUNTAIN_BOTTOM_OFFSET = 18;
+const MOUNTAIN_Y_OFFSET = (MOUNTAIN_BOTTOM_OFFSET / 696) * BEACON_H;
 
 const ROUTE: ReadonlyArray<readonly [number, number]> = [
   [-2.82, 0.28],
@@ -309,7 +311,7 @@ export class SignBoard {
     const a = ROUTE[i];
     const b = ROUTE[i + 1];
     const targetX = a[0] + (b[0] - a[0]) * t;
-    const targetY = a[1] + (b[1] - a[1]) * t;
+    const targetY = a[1] + (b[1] - a[1]) * t - MOUNTAIN_Y_OFFSET;
     const pointsDownLeft = this.mode === 'drop' || this.mode === 'finish';
     this.arrow.position.set(targetX, targetY, 0.12);
     this.arrow.rotation.z = Math.atan2(-0.72, pointsDownLeft ? -0.68 : 0.68);
@@ -390,10 +392,10 @@ function drawBeaconTexture(): CanvasTexture {
 
   const toCanvas = ([x, y]: readonly [number, number]): [number, number] => [
     canvas.width / 2 + (x / BEACON_W) * canvas.width,
-    canvas.height / 2 - (y / BEACON_H) * canvas.height
+    canvas.height / 2 - ((y - MOUNTAIN_Y_OFFSET) / BEACON_H) * canvas.height
   ];
   const route = ROUTE.map(toCanvas);
-  const mountainBase = canvas.height - 18;
+  const mountainBase = canvas.height;
   drawFinishGate(ctx, route[route.length - 1], mountainBase);
 
   const texture = new CanvasTexture(canvas);
@@ -404,7 +406,13 @@ function drawBeaconTexture(): CanvasTexture {
   // adding another large transparent layer that could revive slide flicker.
   const mountain = new Image();
   mountain.onload = () => {
-    ctx.drawImage(mountain, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(
+      mountain,
+      0,
+      MOUNTAIN_BOTTOM_OFFSET,
+      canvas.width,
+      canvas.height
+    );
     drawFinishGate(ctx, route[route.length - 1], mountainBase);
     texture.needsUpdate = true;
   };
