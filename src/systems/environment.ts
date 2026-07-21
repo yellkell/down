@@ -54,8 +54,11 @@ export class EnvironmentSystem extends createSystem({}) {
     env.city.uniforms.uPlayer.value.copy(this.player.position);
     env.clouds.uniforms.uTime.value = t;
 
-    // Platform rides with the rig (rig only moves during slides).
+    // Platform rides with the rig — but hides during slides: seen edge-on
+    // at foot level while descending, its translucent plane cuts a huge
+    // shimmering band across the view (the "everything flickers" bug).
     env.platform.group.position.copy(this.player.position);
+    env.platform.group.visible = game.phase !== 'SLIDE';
 
     // Reactive uniforms — eased so pulses breathe instead of popping.
     const pu = env.platform.uniforms;

@@ -75,10 +75,6 @@ export class GameSystem extends createSystem({
   private gridHold = 0;
   /** Seconds since the end panel appeared — arms the trigger-retry. */
   private endArm = 0;
-  /** In-VR start lobby is up, waiting for BEGIN. */
-  private lobbyActive = false;
-  /** Seconds since the lobby appeared — arms the trigger-to-begin. */
-  private lobbyArm = 0;
   /** Post-win celebration beat before the keyboard rises. */
   private winWait = 0;
   /** The LEAVE YOUR MARK keyboard is up — trigger shortcuts disabled. */
@@ -131,8 +127,6 @@ export class GameSystem extends createSystem({
    */
   showStartLobby(): void {
     if (this.started) return;
-    this.lobbyActive = true;
-    this.lobbyArm = 0;
     // Keep the result panel renderable through boot so UIKit has time to
     // build its first glyph atlas. The lobby is the first safe point to hide
     // it: the start panel is now ready and no result can be showing yet.
@@ -183,8 +177,8 @@ export class GameSystem extends createSystem({
       const retryBtn = doc.getElementById('retry-btn') as UIKit.Text;
       retryBtn?.addEventListener('click', () => this.retry());
       // The first result can arrive while UIKit is still constructing this
-      // document. Reapply both placement and render priority once its meshes
-      // actually exist, rather than waiting for a second game over.
+      // document. Reapply placement once its meshes actually exist, rather
+      // than waiting for a second game over.
       if (this.endPanelShown) this.setEndPanelShown(true);
       else if (this.endPanelCanHide) this.setEndPanelShown(false);
     });
@@ -253,48 +247,21 @@ export class GameSystem extends createSystem({
     if (doc) doc.visible = visible;
   }
 
-  /**
-   * Force a menu panel to draw on top of the world. The finish sits amid the
-   * translucent cloud sea, whose transparent planes can wash over menus.
-   * Raise UIKit's complete ordering block while preserving its internal
-   * glyph/background depth relationship.
-   */
-  private bringPanelToFront(entity: Entity | undefined): void {
-    const root = entity?.object3D;
-    if (!root) return;
-    root.traverse((node) => {
-      const mesh = node as unknown as {
-        isMesh?: boolean;
-        isInstancedMesh?: boolean;
-        material?: { depthTest: boolean; depthWrite: boolean } | Array<{ depthTest: boolean; depthWrite: boolean }>;
-        renderOrder: number;
-      };
-      if (!mesh.isMesh && !mesh.isInstancedMesh) return;
-      const storedOrder = node.userData.panelBaseRenderOrder;
-      const baseOrder = typeof storedOrder === 'number' ? storedOrder : mesh.renderOrder;
-      node.userData.panelBaseRenderOrder = baseOrder;
-      // Lift UIKit's own ordering as a block. Its existing order and depth
-      // offsets keep glyphs above their backgrounds; replacing them made the
-      // first result panel render as empty rectangles.
-      mesh.renderOrder = 10000 + baseOrder;
-      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      mats.forEach((m) => {
-        if (m) {
-          m.depthTest = true;
-          m.depthWrite = false;
-        }
-      });
-    });
-  }
+  // NOTE: never mutate renderOrder/depth on a panel's meshes to force it
+  // "on top" — uikit re-batches its instanced meshes when text changes, so
+  // stale mutations end up on the background quad only, which then draws
+  // over the freshly-batched glyphs: a blank panel. The clouds that washed
+  // over menus are pushed behind instead (negative renderOrder in clouds.ts).
 
-  /** Toggle both the entity and UIKit's separately reparented document. */
+  /**
+   * Park far below when hidden — never visibility-toggled, so its meshes
+   * stay batched and its Interactable stays live for the retry ray.
+   */
   private setEndPanelShown(shown: boolean): void {
     this.endPanelShown = shown;
     const entity = this.panels?.end;
     if (!entity?.object3D) return;
-    entity.object3D.position.set(0, 1.45, -1.8);
-    this.setPanelVisible(entity, shown);
-    if (shown) this.bringPanelToFront(entity);
+    entity.object3D.position.set(0, shown ? 1.45 : -9999, -1.8);
   }
 
   private setEndContent(title: string, stats: string): void {
@@ -313,7 +280,6 @@ export class GameSystem extends createSystem({
     const entity = this.panels?.start;
     if (!entity?.object3D) return;
     entity.object3D.position.set(0, shown ? 1.5 : -9999, -1.9);
-    if (shown) this.bringPanelToFront(entity);
   }
 
   /** ...and for the finish-line keyboard. */
@@ -321,7 +287,6 @@ export class GameSystem extends createSystem({
     const entity = this.panels?.name;
     if (!entity?.object3D) return;
     entity.object3D.position.set(0, shown ? 1.45 : -9999, -1.75);
-    if (shown) this.bringPanelToFront(entity);
   }
 
   // -- The finish-line keyboard ---------------------------------------------
@@ -413,7 +378,6 @@ export class GameSystem extends createSystem({
   private startGame(): void {
     if (this.started) return;
     this.started = true;
-    this.lobbyActive = false;
     this.setStartPanelShown(false);
     this.startRunAudio();
     this.setPointersVisible(false);
@@ -582,11 +546,8 @@ export class GameSystem extends createSystem({
       return;
     }
     if (game.phase === 'START') {
-      // In-VR lobby: BEGIN button, or a bare trigger pull once armed.
-      if (this.lobbyActive) {
-        this.lobbyArm += delta;
-        if (this.lobbyArm > 0.8 && this.selectPressed()) this.startGame();
-      }
+      // In-VR lobby: only the BEGIN button starts the run — no bare-trigger
+      // shortcut here, or an accidental pull anywhere launches the game.
       return;
     }
 

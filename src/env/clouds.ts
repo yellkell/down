@@ -89,6 +89,9 @@ export function createClouds(): CloudHandles {
     const mesh = new Mesh(new CircleGeometry(radius, 48), material);
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.set(0, y, SEA_CENTER_Z);
+    // Draw before UI panels (renderOrder 0) so translucent haze can never
+    // wash over a menu that happens to sit between it and the camera.
+    mesh.renderOrder = -50;
     return mesh;
   };
 
@@ -124,6 +127,7 @@ export function createClouds(): CloudHandles {
     sheet.rotation.z = rng() * Math.PI * 2;
     sheet.position.set(x, y, z);
     sheet.scale.setScalar(90 + rng() * 130);
+    sheet.renderOrder = -50;
     group.add(sheet);
   }
 
