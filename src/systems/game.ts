@@ -493,6 +493,7 @@ export class GameSystem extends createSystem({
   private gameOver(): void {
     game.phase = 'GAME_OVER';
     this.env?.signs.setBravo(false);
+    this.env?.signs.setFailed(true);
     audio.play('die');
     window.setTimeout(() => audio.play('gameover'), 250);
     audio.stopMusic();

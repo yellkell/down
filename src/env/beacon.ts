@@ -49,6 +49,7 @@ export class SignBoard {
   private milestonePulse = 0;
   private time = 0;
   private mode: RouteMode = 'idle';
+  private failed = false;
 
   constructor() {
     const panel = new Mesh(
@@ -240,6 +241,14 @@ export class SignBoard {
     this.bravoLabel.visible = visible;
   }
 
+  setFailed(failed: boolean): void {
+    this.failed = failed;
+    if (failed) {
+      this.arrowMaterial.color.setHex(NEON.red);
+      this.arrowGlowMaterial.color.setHex(NEON.red);
+    }
+  }
+
   /** Flash the arrow when a new descent sector is reached. */
   show(_index: number): void {
     this.milestonePulse = 1;
@@ -250,6 +259,7 @@ export class SignBoard {
     this.targetProgress = 0;
     this.milestonePulse = 0;
     this.mode = 'idle';
+    this.failed = false;
     this.bravoLabel.visible = false;
     this.placeArrow(0);
   }
@@ -272,8 +282,9 @@ export class SignBoard {
     this.progress += (this.targetProgress - this.progress) * Math.min(1, dt * response);
     this.placeArrow(this.progress);
 
-    const routeColor =
-      mode === 'drop'
+    const routeColor = this.failed
+      ? NEON.red
+      : mode === 'drop'
         ? NEON.amber
         : mode === 'finish'
           ? NEON.lime
