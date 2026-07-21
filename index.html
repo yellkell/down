@@ -48,8 +48,9 @@
       }
       #wordmark img {
         display: block;
-        width: 190px;
-        height: auto;
+        width: 150px;
+        height: 150px;
+        object-fit: contain;
         filter: drop-shadow(0 0 13px rgba(41, 243, 255, 0.42));
       }
       #hint {
@@ -85,7 +86,7 @@
       #intro .logo-frame {
         position: relative;
         width: min(90vw, 920px);
-        height: min(42vh, 310px);
+        height: min(52vh, 440px);
         overflow: visible;
         pointer-events: none;
         animation: floaty 5s ease-in-out infinite;
@@ -96,7 +97,8 @@
         left: 0;
         display: block;
         width: 100%;
-        height: auto;
+        height: 100%;
+        object-fit: contain;
         transform: translateY(-50%);
         filter: drop-shadow(0 0 24px rgba(41, 243, 255, 0.4))
           drop-shadow(0 0 48px rgba(255, 61, 242, 0.28));
