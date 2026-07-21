@@ -11,22 +11,18 @@ import {
   MeshBasicMaterial,
   PlaneGeometry,
   ShaderMaterial,
-  Sprite,
   TorusGeometry
 } from '@iwsdk/core';
 
 import { NEON, SLIDE_ANGLE } from '../constants.js';
-import { makeGlow } from './fx.js';
 
 export interface TrackHandles {
   group: Group;
   uniforms: { uTime: { value: number } };
-  /** Hoop meshes and glows are visibility-culled by distance. An invisible
-   * object costs no draw at all; zero-opacity transparent objects still do. */
-  hoops: Array<{
-    mesh: Mesh;
-    glow: Sprite;
-  }>;
+  /** Hoop meshes are visibility-culled before their thin geometry becomes
+   * subpixel. They deliberately have no glow sprite: crossing a billboard
+   * at speed produces a full-view colour flash in VR. */
+  hoops: Mesh[];
   dispose: () => void;
 }
 
@@ -160,14 +156,7 @@ export function createSlideTrack(length: number): TrackHandles {
     hoop.position.set(0, 1.3, -i * 40);
     group.add(hoop);
     disposables.push(material);
-    const glow = makeGlow(color, 4.5, 0.2);
-    glow.position.copy(hoop.position);
-    group.add(glow);
-    disposables.push(glow.material);
-    hoops.push({
-      mesh: hoop,
-      glow
-    });
+    hoops.push(hoop);
   }
 
   return {

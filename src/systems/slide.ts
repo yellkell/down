@@ -260,10 +260,9 @@ export class SlideSystem extends createSystem({}) {
     }
     if (this.track) {
       for (const hoop of this.track.hoops) {
-        hoop.mesh.getWorldPosition(this.fadeWorld);
+        hoop.getWorldPosition(this.fadeWorld);
         const d = this.fadeWorld.distanceTo(eye);
-        hoop.mesh.visible = d < 140;
-        hoop.glow.visible = d < 75;
+        hoop.visible = d < 140;
       }
     }
   }
