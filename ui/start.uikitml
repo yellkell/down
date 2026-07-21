@@ -38,20 +38,26 @@
   .recenter {
     margin-top: 0.45;
   }
-  #begin-btn {
-    width: 92%;
-    padding: 2.3;
+  .begin-button {
+    width: 94%;
+    padding: 2.8;
     margin-top: 2.2;
-    background-color: #29f3ff;
-    color: #02030a;
+    background-color: #ff3df2;
+    color: #ffffff;
     border-color: #ffffff;
-    border-width: 0.1;
-    border-radius: 0.35;
-    font-size: 3.1;
+    border-width: 0.18;
+    border-radius: 0.45;
+    font-size: 3.4;
     font-weight: bold;
-    letter-spacing: 0.45;
+    letter-spacing: 0.55;
     text-align: center;
     cursor: pointer;
+  }
+  .begin-button:hover {
+    background-color: #ffffff;
+    color: #02030a;
+    border-color: #29f3ff;
+    border-width: 0.24;
   }
 </style>
 <div class="panel">
@@ -60,5 +66,5 @@
     <span class="warning-line">CLEAR A 2M X 2M SPACE</span>
     <span class="warning-line recenter">STAND AT CENTER AND RECENTER</span>
   </div>
-  <button id="begin-btn">LET'S GO</button>
+  <button id="begin-btn" class="begin-button">LET'S GO</button>
 </div>

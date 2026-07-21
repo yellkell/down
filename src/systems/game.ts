@@ -163,7 +163,10 @@ export class GameSystem extends createSystem({
       const doc = this.getDocument(entity);
       if (!doc) return;
       const beginBtn = doc.getElementById('begin-btn') as UIKit.Text;
-      beginBtn?.addEventListener('click', () => this.startGame());
+      beginBtn?.addEventListener('click', () => {
+        audio.blip(1250);
+        this.startGame();
+      });
     });
   }
 
