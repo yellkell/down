@@ -3,6 +3,7 @@ import {
   CanvasTexture,
   DoubleSide,
   Group,
+  LinearFilter,
   Mesh,
   MeshBasicMaterial,
   PlaneGeometry,
@@ -51,9 +52,14 @@ export class SignBoard {
       new PlaneGeometry(BEACON_W, BEACON_H),
       new MeshBasicMaterial({
         map: drawBeaconTexture(),
-        transparent: true,
+        // The texture paints the entire rectangular board, so treating this
+        // nearly opaque surface as transparent only forces it into Quest's
+        // expensive stereo transparency pass. Make it a normal depth-writing
+        // surface; the arrow, telemetry, and scan remain separate overlays.
+        transparent: false,
         side: DoubleSide,
-        depthWrite: false
+        depthTest: true,
+        depthWrite: true
       })
     );
     this.group.add(panel);
@@ -106,6 +112,12 @@ export class SignBoard {
     this.altitudeContext = altitudeCanvas.getContext('2d')!;
     this.altitudeTexture = new CanvasTexture(altitudeCanvas);
     this.altitudeTexture.colorSpace = SRGBColorSpace;
+    // This canvas changes during play. Regenerating its full mip chain on
+    // every altitude step stalls Quest's render thread, so use one filtered
+    // level and upload only the source pixels.
+    this.altitudeTexture.generateMipmaps = false;
+    this.altitudeTexture.minFilter = LinearFilter;
+    this.altitudeTexture.magFilter = LinearFilter;
     const altitudePlate = new Mesh(
       new PlaneGeometry(2.8, 0.46),
       new MeshBasicMaterial({
@@ -120,7 +132,7 @@ export class SignBoard {
     altitudePlate.renderOrder = 35;
     altitudePlate.frustumCulled = false;
     this.group.add(altitudePlate);
-    this.drawAltitude(0, null);
+    this.drawAltitude(0, null, 1);
 
     this.scanMaterial = new MeshBasicMaterial({
       map: drawScanTexture(),
@@ -185,7 +197,7 @@ export class SignBoard {
             : NEON.magenta;
     this.arrowMaterial.color.setHex(routeColor);
     this.arrowGlowMaterial.color.setHex(routeColor);
-    this.drawAltitude(altitudeMeters, countdown);
+    this.drawAltitude(altitudeMeters, countdown, mode === 'drop' ? 5 : 1);
 
     this.milestonePulse = Math.max(0, this.milestonePulse - dt * 1.3);
     const pulse = 1 + this.milestonePulse * 0.28 + Math.sin(this.time * 6) * 0.025;
@@ -212,12 +224,19 @@ export class SignBoard {
     this.arrow.rotation.z = Math.atan2(dy, dx);
   }
 
-  private drawAltitude(altitudeMeters: number, countdown: number | null): void {
-    // 2m steps: during a slide the altitude spins ~11m/s, and each change
-    // is a full canvas redraw (shadow-blurred text) plus a texture upload.
-    // Halving the cadence keeps the readout lively without eating frame
-    // budget mid-descent.
-    const altitude = Math.max(0, Math.round(altitudeMeters / 2) * 2);
+  private drawAltitude(
+    altitudeMeters: number,
+    countdown: number | null,
+    altitudeStep: number
+  ): void {
+    // During a drop this is a GPU texture upload, not just a text change.
+    // Five-metre steps remain easy to read at slide speed while reducing the
+    // update cadence to roughly once per second; stationary/grid altitude
+    // retains one-metre precision.
+    const altitude = Math.max(
+      0,
+      Math.round(altitudeMeters / altitudeStep) * altitudeStep
+    );
     if (altitude === this.altitudeValue && countdown === this.countdownValue) return;
     this.altitudeValue = altitude;
     this.countdownValue = countdown;
