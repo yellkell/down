@@ -11,10 +11,10 @@
     border-radius: 0.5;
   }
   .title {
-    font-size: 3.8;
+    font-size: 4;
     font-weight: bold;
-    letter-spacing: 0.5;
-    color: #ffffff;
+    letter-spacing: 0.72;
+    color: #ffd7fb;
     text-align: center;
   }
   #name-display {
@@ -27,8 +27,8 @@
     border-radius: 0.25;
     font-size: 3.3;
     font-weight: bold;
-    letter-spacing: 1;
-    color: #ffffff;
+    letter-spacing: 1.1;
+    color: #dffcff;
     text-align: center;
   }
   .row {
@@ -50,6 +50,16 @@
     color: #ffffff;
     text-align: center;
     cursor: pointer;
+  }
+  .key:hover {
+    background-color: #1a2130;
+    border-color: #29f3ff;
+    color: #dffcff;
+  }
+  .key-wide:hover {
+    background-color: #1a2130;
+    border-color: #29f3ff;
+    color: #dffcff;
   }
   .key-wide {
     width: 17;
@@ -78,15 +88,25 @@
     border-radius: 0.25;
     font-size: 2.5;
     font-weight: bold;
+    letter-spacing: 0.35;
     text-align: center;
     cursor: pointer;
+  }
+  #tag-btn:hover {
+    background-color: #ffffff;
+    border-color: #54ff7a;
+    border-width: 0.16;
   }
   #skip-btn {
     margin-top: 1;
     font-size: 1.6;
+    letter-spacing: 0.3;
     color: #9ba0b5;
     text-align: center;
     cursor: pointer;
+  }
+  #skip-btn:hover {
+    color: #ffffff;
   }
 </style>
 <div class="panel">

@@ -11,19 +11,19 @@
     border-radius: 0.5;
   }
   #end-title {
-    font-size: 5.6;
+    font-size: 5.8;
     font-weight: bold;
-    letter-spacing: 0.5;
-    color: #ffffff;
+    letter-spacing: 0.72;
+    color: #edfff2;
     text-align: center;
   }
   #end-stats {
     width: 92%;
     margin-top: 1.6;
-    font-size: 2.1;
+    font-size: 2.2;
     font-weight: bold;
-    letter-spacing: 0.25;
-    color: #ffffff;
+    letter-spacing: 0.38;
+    color: #bdffd0;
     text-align: center;
   }
   #retry-btn {
@@ -37,9 +37,14 @@
     border-radius: 0.35;
     font-size: 3;
     font-weight: bold;
-    letter-spacing: 0.4;
+    letter-spacing: 0.55;
     text-align: center;
     cursor: pointer;
+  }
+  #retry-btn:hover {
+    background-color: #ffffff;
+    border-color: #54ff7a;
+    border-width: 0.18;
   }
 </style>
 <div class="panel">
