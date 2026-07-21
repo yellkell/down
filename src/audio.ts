@@ -46,6 +46,12 @@ class AudioManager {
     el.currentTime = 0;
     el.volume = volume;
     void el.play().catch(() => {});
+    // Quest can transiently suspend page audio around an XR session — a
+    // play() in that window silently dies. One delayed re-try rescues the
+    // line; if it's already playing this is a no-op.
+    window.setTimeout(() => {
+      if (el.paused && el.currentTime === 0) void el.play().catch(() => {});
+    }, 250);
   }
 
   /**

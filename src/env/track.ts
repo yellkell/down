@@ -20,6 +20,9 @@ import { makeGlow } from './fx.js';
 export interface TrackHandles {
   group: Group;
   uniforms: { uTime: { value: number } };
+  /** Hoop meshes + materials so the slide can fade them by distance —
+   * a 3.5cm neon ring is subpixel beyond ~100m and shimmers if left crisp. */
+  hoops: Array<{ mesh: Mesh; material: MeshBasicMaterial; baseOpacity: number }>;
   dispose: () => void;
 }
 
@@ -59,7 +62,13 @@ export function createSlideTrack(length: number): TrackHandles {
       float lineAt(float x, float target) {
         float d = abs(x - target);
         float w = fwidth(d) * 1.5;
-        return 1.0 - smoothstep(0.0, w + 0.02, d);
+        float core = 1.0 - smoothstep(0.0, w + 0.02, d);
+        // Energy-conserving AA: the smoothstep widens the line to pixel
+        // size, so once w exceeds the true 2cm half-width, dim it by the
+        // same ratio. Without this, a grazing view smears all four lane
+        // dividers into one full-bright sheet that pulses with the sin()
+        // below — the giant magenta strobe at the start of every slide.
+        return core * min(1.0, 0.02 / max(w, 1e-4));
       }
 
       void main() {
@@ -72,10 +81,16 @@ export function createSlideTrack(length: number): TrackHandles {
         vec3 col = vec3(0.012, 0.014, 0.035); // dark glass bed
         float alpha = 0.62;
 
-        // Chevron arrows flowing downhill.
-        float chev = fract((vLocal.y + abs(vLocal.x) * 1.6) * 0.14 + uTime * 1.4);
-        float arrow = smoothstep(0.0, 0.05, chev) * smoothstep(0.16, 0.11, chev);
-        col += cyan * arrow * 0.5;
+        // Chevron arrows flowing downhill. The pattern must dissolve where a
+        // pixel spans a big slice of its wavelength (far away / grazing view):
+        // an under-sampled scrolling pattern strobes every frame — the
+        // "whole slide flickers" artifact at the start of each descent.
+        float chevPhase = (vLocal.y + abs(vLocal.x) * 1.6) * 0.14 + uTime * 1.4;
+        float fw = fwidth(chevPhase);
+        float chev = fract(chevPhase);
+        float arrow = smoothstep(0.0, 0.05 + fw, chev) * smoothstep(0.16 + fw, 0.11, chev);
+        float melt = clamp(1.0 - fw * 6.0, 0.0, 1.0);
+        col += cyan * (arrow * melt + (1.0 - melt) * 0.06) * 0.5;
 
         // Lane dividers framing the three lanes (centers at -0.5, 0, 0.5).
         float divider = lineAt(vLocal.x, -0.75) + lineAt(vLocal.x, -0.25)
@@ -121,20 +136,20 @@ export function createSlideTrack(length: number): TrackHandles {
   // --- Energy hoops every 40m — motion + progress cue ------------------
   const hoopGeometry = new TorusGeometry(1.7, 0.035, 10, 48);
   const hoopCount = Math.floor(length / 40);
+  const hoops: TrackHandles['hoops'] = [];
   for (let i = 1; i <= hoopCount; i++) {
     const color = i % 2 === 0 ? NEON.cyan : NEON.magenta;
-    const hoop = new Mesh(
-      hoopGeometry,
-      new MeshBasicMaterial({
-        color,
-        blending: AdditiveBlending,
-        transparent: true,
-        opacity: 0.75,
-        depthWrite: false
-      })
-    );
+    const material = new MeshBasicMaterial({
+      color,
+      blending: AdditiveBlending,
+      transparent: true,
+      opacity: 0.75,
+      depthWrite: false
+    });
+    const hoop = new Mesh(hoopGeometry, material);
     hoop.position.set(0, 1.3, -i * 40);
     group.add(hoop);
+    hoops.push({ mesh: hoop, material, baseOpacity: 0.75 });
     const glow = makeGlow(color, 4.5, 0.2);
     glow.position.copy(hoop.position);
     group.add(glow);
@@ -144,6 +159,7 @@ export function createSlideTrack(length: number): TrackHandles {
   return {
     group,
     uniforms,
+    hoops,
     dispose: () => {
       group.removeFromParent();
       disposables.forEach((d) => d.dispose());

@@ -52,6 +52,11 @@ export class SlideSystem extends createSystem({}) {
   private elapsed = 0;
   private track: TrackHandles | null = null;
   private barriers: Group[] = [];
+  /** Wire materials per gate, faded by distance: a 1px additive line cage
+   * hundreds of metres out is subpixel and strobes every frame — the far
+   * glow sprite carries each gate's presence instead. */
+  private barrierWires: Array<{ group: Group; material: LineBasicMaterial }> = [];
+  private fadeWorld = new Vector3();
   private barrierGeometry = new BoxGeometry(
     BARRIER_SIZE.w,
     BARRIER_SIZE.h,
@@ -130,17 +135,16 @@ export class SlideSystem extends createSystem({}) {
     fill.scale.setScalar(0.94);
     group.add(fill);
 
-    const wire = new LineSegments(
-      this.barrierEdges,
-      new LineBasicMaterial({
-        color,
-        transparent: true,
-        opacity: 0.95,
-        blending: AdditiveBlending,
-        depthWrite: false
-      })
-    );
+    const wireMaterial = new LineBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.95,
+      blending: AdditiveBlending,
+      depthWrite: false
+    });
+    const wire = new LineSegments(this.barrierEdges, wireMaterial);
     group.add(wire);
+    this.barrierWires.push({ group, material: wireMaterial });
 
     const glow = makeGlow(color, 1.1, 0.35);
     glow.position.y = BARRIER_SIZE.h / 2;
@@ -153,9 +157,31 @@ export class SlideSystem extends createSystem({}) {
   private clearCourse(): void {
     this.barriers.forEach((b) => b.removeFromParent());
     this.barriers = [];
+    this.barrierWires.forEach((w) => w.material.dispose());
+    this.barrierWires = [];
     if (this.track) {
       this.track.dispose();
       this.track = null;
+    }
+  }
+
+  /**
+   * Distance-fade the crisp thin details (gate wires, hoops) so the far
+   * course reads as calm glow markers instead of vibrating subpixel lines.
+   * Everything is world-anchored — nothing here tracks the head.
+   */
+  private fadeCourseDetail(): void {
+    const eye = this.player.position;
+    for (const { group, material } of this.barrierWires) {
+      const d = group.position.distanceTo(eye);
+      material.opacity = 0.95 * Math.min(1, Math.max(0.12, (230 - d) / 160));
+    }
+    if (this.track) {
+      for (const { mesh, material, baseOpacity } of this.track.hoops) {
+        mesh.getWorldPosition(this.fadeWorld);
+        const d = this.fadeWorld.distanceTo(eye);
+        material.opacity = baseOpacity * Math.min(1, Math.max(0.15, (210 - d) / 140));
+      }
     }
   }
 
@@ -167,6 +193,7 @@ export class SlideSystem extends createSystem({}) {
 
   update(delta: number, time: number): void {
     if (this.track) this.track.uniforms.uTime.value = time / 1000;
+    if (this.track || this.barrierWires.length > 0) this.fadeCourseDetail();
     if (!this.active) return;
 
     this.elapsed += delta;
