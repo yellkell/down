@@ -21,7 +21,6 @@ import {
   KILL_ZONE,
   MUSIC_DROPS,
   PHASE_HEIGHTS,
-  TOTAL_DESCENT,
   TOTAL_ROUNDS,
   WINNER_HEIGHT
 } from '../constants.js';
@@ -467,7 +466,7 @@ export class GameSystem extends createSystem({
 
     this.setEndContent(
       'YOU MADE IT!',
-      `${TOTAL_DESCENT}M DESCENDED  ·  ${this.formatTime(game.runTime)}`
+      'THANKS FOR PLAYING!'
     );
     this.setPanelVisible(this.panels?.warn, false);
 
