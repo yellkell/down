@@ -288,7 +288,7 @@ export class SignBoard {
     this.arrow.position.set(targetX, targetY, 0.12);
     this.arrow.rotation.z = Math.atan2(-0.72, pointsDownLeft ? -0.68 : 0.68);
     this.youLabel.position.set(
-      targetX + (pointsDownLeft ? 0.48 : -0.48),
+      targetX + (pointsDownLeft ? 0.62 : -0.62),
       targetY + 0.67,
       0.13
     );
