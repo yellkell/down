@@ -182,10 +182,15 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   // BEGIN there (handled by the visibility subscription below).
   enterVrBtn?.addEventListener('click', () => {
     if (enterVrBtn.classList.contains('disabled')) return;
+    // This click is the page's one guaranteed DOM gesture — resume the
+    // audio context here so WebAudio SFX are unlocked before the session,
+    // where UIKit button clicks don't count as gestures.
+    audio.unlock();
     world.launchXR();
   });
   // PREVIEW: desktop spectator — starts straight away.
   previewBtn?.addEventListener('click', () => {
+    audio.unlock();
     dismissIntro();
     game?.beginRun();
   });

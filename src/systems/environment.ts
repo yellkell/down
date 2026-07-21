@@ -38,6 +38,10 @@ export interface EnvHandles {
 export class EnvironmentSystem extends createSystem({}) {
   private headWorld = new Vector3();
   private riserY = -12;
+  /** First seconds of boot: force-render normally-hidden materials (the
+   * streaks) at zero strength so their shaders compile before gameplay —
+   * a mid-slide compile drops frames, which in VR reads as flicker. */
+  private warmTimer = 2;
 
   private get env(): EnvHandles {
     return this.globals.env as EnvHandles;
@@ -88,7 +92,9 @@ export class EnvironmentSystem extends createSystem({}) {
     const streaks = env.streaks.uniforms;
     streaks.uStrength.value += (speedRatio - streaks.uStrength.value) * Math.min(1, delta * 4);
     streaks.uOffset.value += game.slideSpeed * delta * 1.35;
-    env.streaks.object.visible = streaks.uStrength.value > 0.02;
+    if (this.warmTimer > 0) this.warmTimer -= delta;
+    env.streaks.object.visible =
+      streaks.uStrength.value > 0.02 || this.warmTimer > 0;
 
     const roundIndex = Math.min(game.round, TOTAL_ROUNDS) - 1;
     let routePosition: number | null = null;

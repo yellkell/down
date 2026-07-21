@@ -1,9 +1,19 @@
 /**
- * Audio, played via HTMLAudio (reliable inside WebXR sessions on Quest
- * browser; the BEGIN button click provides the unlock gesture).
+ * Audio. Two transports, deliberately:
  *
- * Soundtrack: "Run" on loop. Voice lines reward each slide you survive.
- * All paths are relative so the game works from a subpath (GitHub Pages).
+ * - SFX/voice lines: WebAudio buffers. HTMLAudio elements proved flaky for
+ *   one-shots inside Quest's XR sessions — playback silently paused or
+ *   never started depending on element state and activation timing. A
+ *   decoded AudioBuffer fired through the context (the same context the
+ *   keyboard blips already use successfully in-headset) has no element
+ *   state machine to wedge: once the context is running, start() plays.
+ * - Music: HTMLAudio, because it streams a 4MB file and its currentTime
+ *   is the sync clock the whole game runs on.
+ *
+ * The context unlocks on the 2D intro's button click (a real DOM gesture);
+ * everything after that — including UIKit clicks in VR, which are NOT DOM
+ * gestures — just works. All paths are relative so the game works from a
+ * subpath (GitHub Pages).
  */
 const SFX = {
   begin: './audio/begin.ogg',
@@ -18,16 +28,21 @@ const SFX = {
 export type SfxName = keyof typeof SFX;
 
 class AudioManager {
-  private sfx = new Map<SfxName, HTMLAudioElement>();
-  private music: HTMLAudioElement | null = null;
   private ctx: AudioContext | null = null;
+  private buffers = new Map<SfxName, AudioBuffer>();
+  private live = new Set<AudioBufferSourceNode>();
+  private music: HTMLAudioElement | null = null;
 
   init(): void {
+    this.ctx ??= new AudioContext();
     (Object.keys(SFX) as SfxName[]).forEach((name) => {
-      const el = new Audio(SFX[name]);
-      el.preload = 'auto';
-      this.sfx.set(name, el);
+      void fetch(SFX[name])
+        .then((res) => res.arrayBuffer())
+        .then((buf) => this.ctx!.decodeAudioData(buf))
+        .then((decoded) => this.buffers.set(name, decoded))
+        .catch(() => {}); // a missing stinger is never fatal
     });
+
     // AAC where supported, Vorbis everywhere else (open-codec Chromium
     // builds ship without AAC — no browser should ever lose the music).
     const probe = document.createElement('audio');
@@ -40,24 +55,31 @@ class AudioManager {
     this.music.volume = 0.6;
   }
 
+  /** Call from any real DOM gesture (the intro buttons) so the context is
+   * running before VR, where UIKit clicks don't count as gestures. */
+  unlock(): void {
+    void this.ctx?.resume().catch(() => {});
+  }
+
   play(name: SfxName, volume = 1): void {
-    const el = this.sfx.get(name);
-    if (!el) return;
-    el.currentTime = 0;
-    el.volume = volume;
-    void el.play().catch(() => {});
-    // Quest can transiently suspend page audio around an XR session — a
-    // play() in that window silently dies. One delayed re-try rescues the
-    // line; if it's already playing this is a no-op.
-    window.setTimeout(() => {
-      if (el.paused && el.currentTime === 0) void el.play().catch(() => {});
-    }, 250);
+    const ctx = this.ctx;
+    const buffer = this.buffers.get(name);
+    if (!ctx || !buffer) return;
+    if (ctx.state !== 'running') void ctx.resume().catch(() => {});
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const gain = ctx.createGain();
+    gain.gain.value = volume;
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    this.live.add(source);
+    source.onended = () => this.live.delete(source);
+    source.start();
   }
 
   /**
    * Tiny synthesized UI blip for keyboard feedback — the .ogg files are
-   * voice lines and countdown stingers, all wrong for a key press. Lazily
-   * creates the AudioContext (first call always follows a user gesture).
+   * voice lines and countdown stingers, all wrong for a key press.
    */
   blip(freq: number, dur = 0.05, vol = 0.18): void {
     try {
@@ -98,10 +120,14 @@ class AudioManager {
   /** Silence the previous run before replaying its opening cue. */
   stopAll(): void {
     this.music?.pause();
-    this.sfx.forEach((el) => {
-      el.pause();
-      el.currentTime = 0;
+    this.live.forEach((source) => {
+      try {
+        source.stop();
+      } catch {
+        /* already ended */
+      }
     });
+    this.live.clear();
   }
 }
 

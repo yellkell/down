@@ -11,6 +11,7 @@ import {
   MeshBasicMaterial,
   PlaneGeometry,
   ShaderMaterial,
+  SpriteMaterial,
   TorusGeometry
 } from '@iwsdk/core';
 
@@ -21,8 +22,16 @@ export interface TrackHandles {
   group: Group;
   uniforms: { uTime: { value: number } };
   /** Hoop meshes + materials so the slide can fade them by distance —
-   * a 3.5cm neon ring is subpixel beyond ~100m and shimmers if left crisp. */
-  hoops: Array<{ mesh: Mesh; material: MeshBasicMaterial; baseOpacity: number }>;
+   * a 3.5cm neon ring is subpixel beyond ~100m and shimmers if left crisp,
+   * and the big additive glow sprites stack ruinously at the vanishing
+   * point on Quest's tiled GPU if every hoop keeps one at full strength. */
+  hoops: Array<{
+    mesh: Mesh;
+    material: MeshBasicMaterial;
+    baseOpacity: number;
+    glowMaterial: SpriteMaterial;
+    glowBase: number;
+  }>;
   dispose: () => void;
 }
 
@@ -161,12 +170,18 @@ export function createSlideTrack(length: number): TrackHandles {
     const hoop = new Mesh(hoopGeometry, material);
     hoop.position.set(0, 1.3, -i * 40);
     group.add(hoop);
-    hoops.push({ mesh: hoop, material, baseOpacity: 0.75 });
     disposables.push(material);
     const glow = makeGlow(color, 4.5, 0.2);
     glow.position.copy(hoop.position);
     group.add(glow);
     disposables.push(glow.material);
+    hoops.push({
+      mesh: hoop,
+      material,
+      baseOpacity: 0.75,
+      glowMaterial: glow.material,
+      glowBase: 0.2
+    });
   }
 
   return {

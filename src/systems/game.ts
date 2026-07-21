@@ -368,7 +368,7 @@ export class GameSystem extends createSystem({
     if (this.musicStartTimer !== null) window.clearTimeout(this.musicStartTimer);
     audio.stopAll();
     audio.play('begin');
-    // begin.ogg is 747 ms. Give the full line clear air before Run enters.
+    // begin.ogg is 560 ms. Give the full line clear air before Run enters.
     this.musicStartTimer = window.setTimeout(() => {
       audio.startMusic();
       this.musicStartTimer = null;

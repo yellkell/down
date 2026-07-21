@@ -8,6 +8,7 @@ import {
   LineSegments,
   Mesh,
   MeshBasicMaterial,
+  SpriteMaterial,
   Vector3
 } from '@iwsdk/core';
 
@@ -53,10 +54,17 @@ export class SlideSystem extends createSystem({}) {
   private elapsed = 0;
   private track: TrackHandles | null = null;
   private barriers: Group[] = [];
-  /** Wire materials per gate, faded by distance: a 1px additive line cage
-   * hundreds of metres out is subpixel and strobes every frame — the far
-   * glow sprite carries each gate's presence instead. */
-  private barrierWires: Array<{ group: Group; material: LineBasicMaterial }> = [];
+  /** Per-gate wire + glow materials, faded by distance. The wire: a 1px
+   * additive cage hundreds of metres out is subpixel and strobes every
+   * frame. The glow: with ~40 gates in view at launch, the additive
+   * sprites stack at the vanishing point — a fill-rate bomb on Quest's
+   * tiled GPU that drops frames (headset-only flicker). Only nearby gates
+   * get either at full strength. */
+  private barrierWires: Array<{
+    group: Group;
+    material: LineBasicMaterial;
+    glow: SpriteMaterial;
+  }> = [];
   private fadeWorld = new Vector3();
   private barrierGeometry = new BoxGeometry(
     BARRIER_SIZE.w,
@@ -71,7 +79,7 @@ export class SlideSystem extends createSystem({}) {
   });
   private warmup: Group | null = null;
   private warmupTrack: TrackHandles | null = null;
-  private warmupWire: LineBasicMaterial | null = null;
+  private warmupWire: { material: LineBasicMaterial; glow: SpriteMaterial } | null = null;
   private warmupTimer = 3;
 
   init(): void {
@@ -94,7 +102,7 @@ export class SlideSystem extends createSystem({}) {
     const barrier = this.spawnBarrier(0, 0, 0);
     barrier.removeFromParent();
     this.barriers.pop();
-    this.warmupWire = this.barrierWires.pop()?.material ?? null;
+    this.warmupWire = this.barrierWires.pop() ?? null;
     group.add(barrier);
     group.scale.setScalar(0.001); // sub-centimetre: draws, but invisible
     group.position.set(0, PHASE_HEIGHTS[0] - 2, -2);
@@ -175,11 +183,11 @@ export class SlideSystem extends createSystem({}) {
     });
     const wire = new LineSegments(this.barrierEdges, wireMaterial);
     group.add(wire);
-    this.barrierWires.push({ group, material: wireMaterial });
 
     const glow = makeGlow(color, 1.1, 0.35);
     glow.position.y = BARRIER_SIZE.h / 2;
     group.add(glow);
+    this.barrierWires.push({ group, material: wireMaterial, glow: glow.material });
 
     this.scene.add(group);
     return group;
@@ -188,7 +196,10 @@ export class SlideSystem extends createSystem({}) {
   private clearCourse(): void {
     this.barriers.forEach((b) => b.removeFromParent());
     this.barriers = [];
-    this.barrierWires.forEach((w) => w.material.dispose());
+    this.barrierWires.forEach((w) => {
+      w.material.dispose();
+      w.glow.dispose();
+    });
     this.barrierWires = [];
     if (this.track) {
       this.track.dispose();
@@ -203,15 +214,21 @@ export class SlideSystem extends createSystem({}) {
    */
   private fadeCourseDetail(): void {
     const eye = this.player.position;
-    for (const { group, material } of this.barrierWires) {
+    for (const { group, material, glow } of this.barrierWires) {
       const d = group.position.distanceTo(eye);
       material.opacity = 0.95 * Math.min(1, Math.max(0.12, (230 - d) / 160));
+      // Glows are strictly local colour: beyond ~90m they contribute
+      // nothing but stacked additive overdraw at the vanishing point.
+      glow.opacity = 0.35 * Math.min(1, Math.max(0, (90 - d) / 55));
     }
     if (this.track) {
-      for (const { mesh, material, baseOpacity } of this.track.hoops) {
-        mesh.getWorldPosition(this.fadeWorld);
+      for (const hoop of this.track.hoops) {
+        hoop.mesh.getWorldPosition(this.fadeWorld);
         const d = this.fadeWorld.distanceTo(eye);
-        material.opacity = baseOpacity * Math.min(1, Math.max(0.15, (210 - d) / 140));
+        hoop.material.opacity =
+          hoop.baseOpacity * Math.min(1, Math.max(0.15, (210 - d) / 140));
+        hoop.glowMaterial.opacity =
+          hoop.glowBase * Math.min(1, Math.max(0, (130 - d) / 80));
       }
     }
   }
@@ -228,7 +245,8 @@ export class SlideSystem extends createSystem({}) {
       if (this.warmupTimer <= 0) {
         this.warmup.removeFromParent();
         this.warmupTrack?.dispose();
-        this.warmupWire?.dispose();
+        this.warmupWire?.material.dispose();
+        this.warmupWire?.glow.dispose();
         this.warmup = null;
         this.warmupTrack = null;
         this.warmupWire = null;
