@@ -1,5 +1,4 @@
 import {
-  AdditiveBlending,
   BoxGeometry,
   createSystem,
   EdgesGeometry,
@@ -8,6 +7,7 @@ import {
   LineSegments,
   Mesh,
   MeshBasicMaterial,
+  Sprite,
   SpriteMaterial,
   Vector3
 } from '@iwsdk/core';
@@ -42,6 +42,25 @@ export interface SlideRequest {
   isFinal: boolean;
 }
 
+interface PendingBarrier {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface BarrierDetail {
+  group: Group;
+  wire: LineSegments;
+  material: LineBasicMaterial;
+  glow: Sprite;
+  glowMaterial: SpriteMaterial;
+}
+
+const BARRIER_BUILD_DISTANCE = 190;
+const BARRIER_BODY_DISTANCE = 185;
+const BARRIER_WIRE_DISTANCE = 125;
+const BARRIER_GLOW_DISTANCE = 65;
+
 /**
  * Rides the rig down the 20° descent line: eased launch and landing,
  * a generated light-track to follow, and slalom barriers to dodge.
@@ -54,17 +73,10 @@ export class SlideSystem extends createSystem({}) {
   private elapsed = 0;
   private track: TrackHandles | null = null;
   private barriers: Group[] = [];
-  /** Per-gate wire + glow materials, faded by distance. The wire: a 1px
-   * additive cage hundreds of metres out is subpixel and strobes every
-   * frame. The glow: with ~40 gates in view at launch, the additive
-   * sprites stack at the vanishing point — a fill-rate bomb on Quest's
-   * tiled GPU that drops frames (headset-only flicker). Only nearby gates
-   * get either at full strength. */
-  private barrierWires: Array<{
-    group: Group;
-    material: LineBasicMaterial;
-    glow: SpriteMaterial;
-  }> = [];
+  private pendingBarriers: PendingBarrier[] = [];
+  /** Fine details are only rendered when useful. Far transparent draws were
+   * saturating Quest's tiled GPU at the top of each slide. */
+  private barrierDetails: BarrierDetail[] = [];
   private fadeWorld = new Vector3();
   private barrierGeometry = new BoxGeometry(
     BARRIER_SIZE.w,
@@ -74,12 +86,13 @@ export class SlideSystem extends createSystem({}) {
   private barrierEdges = new EdgesGeometry(this.barrierGeometry);
   private barrierFill = new MeshBasicMaterial({
     color: 0x02020a,
-    transparent: true,
-    opacity: 0.88
+    transparent: false,
+    depthTest: true,
+    depthWrite: true
   });
   private warmup: Group | null = null;
   private warmupTrack: TrackHandles | null = null;
-  private warmupWire: { material: LineBasicMaterial; glow: SpriteMaterial } | null = null;
+  private warmupDetail: BarrierDetail | null = null;
   private warmupTimer = 3;
 
   init(): void {
@@ -101,8 +114,7 @@ export class SlideSystem extends createSystem({}) {
     group.add(this.warmupTrack.group);
     const barrier = this.spawnBarrier(0, 0, 0);
     barrier.removeFromParent();
-    this.barriers.pop();
-    this.warmupWire = this.barrierWires.pop() ?? null;
+    this.warmupDetail = this.barrierDetails.pop() ?? null;
     group.add(barrier);
     group.scale.setScalar(0.001); // sub-centimetre: draws, but invisible
     group.position.set(0, PHASE_HEIGHTS[0] - 2, -2);
@@ -122,6 +134,7 @@ export class SlideSystem extends createSystem({}) {
     this.isFinal = request.isFinal;
     this.speed = 0;
     this.elapsed = 0;
+    this.pendingBarriers = [];
 
     const start = this.player.position;
     const drop = start.y - this.targetY;
@@ -133,11 +146,14 @@ export class SlideSystem extends createSystem({}) {
     this.track.group.position.copy(start);
     this.scene.add(this.track.group);
 
-    this.spawnBarriers(start.clone(), length);
+    this.queueBarriers(start.clone(), length);
+    // The first rendered slide frame must never contain every distant hoop
+    // and glow. Cull the track immediately, before control returns to render.
+    this.cullCourseDetail();
     emit('slide-start');
   }
 
-  private spawnBarriers(start: Vector3, length: number): void {
+  private queueBarriers(start: Vector3, length: number): void {
     let spacing: number;
     let pattern: ReadonlyArray<ReadonlyArray<number>>;
     if (this.isFinal) {
@@ -160,9 +176,27 @@ export class SlideSystem extends createSystem({}) {
       const z = start.z - Math.cos(SLIDE_ANGLE) * distance;
       for (const lane of lanes) {
         const x = start.x + LANE_X[lane];
-        this.barriers.push(this.spawnBarrier(x, y + BARRIER_SIZE.h / 2, z));
+        this.pendingBarriers.push({
+          x,
+          y: y + BARRIER_SIZE.h / 2,
+          z
+        });
       }
     }
+  }
+
+  /** Build at most one upcoming obstacle per frame. Constructing the entire
+   * course in the launch frame stalls Quest long enough to break stereo
+   * reprojection, which makes unrelated UI flicker too. */
+  private spawnQueuedBarrier(): void {
+    const next = this.pendingBarriers[0];
+    if (!next) return;
+    this.fadeWorld.set(next.x, next.y, next.z);
+    if (this.fadeWorld.distanceTo(this.player.position) > BARRIER_BUILD_DISTANCE) {
+      return;
+    }
+    this.pendingBarriers.shift();
+    this.barriers.push(this.spawnBarrier(next.x, next.y, next.z));
   }
 
   private spawnBarrier(x: number, y: number, z: number): Group {
@@ -176,10 +210,9 @@ export class SlideSystem extends createSystem({}) {
 
     const wireMaterial = new LineBasicMaterial({
       color,
-      transparent: true,
-      opacity: 0.95,
-      blending: AdditiveBlending,
-      depthWrite: false
+      transparent: false,
+      depthTest: true,
+      depthWrite: true
     });
     const wire = new LineSegments(this.barrierEdges, wireMaterial);
     group.add(wire);
@@ -187,48 +220,50 @@ export class SlideSystem extends createSystem({}) {
     const glow = makeGlow(color, 1.1, 0.35);
     glow.position.y = BARRIER_SIZE.h / 2;
     group.add(glow);
-    this.barrierWires.push({ group, material: wireMaterial, glow: glow.material });
+    this.barrierDetails.push({
+      group,
+      wire,
+      material: wireMaterial,
+      glow,
+      glowMaterial: glow.material
+    });
 
     this.scene.add(group);
     return group;
   }
 
   private clearCourse(): void {
+    this.pendingBarriers = [];
     this.barriers.forEach((b) => b.removeFromParent());
     this.barriers = [];
-    this.barrierWires.forEach((w) => {
-      w.material.dispose();
-      w.glow.dispose();
+    this.barrierDetails.forEach((detail) => {
+      detail.material.dispose();
+      detail.glowMaterial.dispose();
     });
-    this.barrierWires = [];
+    this.barrierDetails = [];
     if (this.track) {
       this.track.dispose();
       this.track = null;
     }
   }
 
-  /**
-   * Distance-fade the crisp thin details (gate wires, hoops) so the far
-   * course reads as calm glow markers instead of vibrating subpixel lines.
-   * Everything is world-anchored — nothing here tracks the head.
-   */
-  private fadeCourseDetail(): void {
+  /** Hard visibility gates avoid both subpixel shimmer and zero-opacity
+   * transparent draw calls. Everything remains world-anchored. */
+  private cullCourseDetail(): void {
     const eye = this.player.position;
-    for (const { group, material, glow } of this.barrierWires) {
+    for (const detail of this.barrierDetails) {
+      const { group, wire, glow } = detail;
       const d = group.position.distanceTo(eye);
-      material.opacity = 0.95 * Math.min(1, Math.max(0.12, (230 - d) / 160));
-      // Glows are strictly local colour: beyond ~90m they contribute
-      // nothing but stacked additive overdraw at the vanishing point.
-      glow.opacity = 0.35 * Math.min(1, Math.max(0, (90 - d) / 55));
+      group.visible = d < BARRIER_BODY_DISTANCE;
+      wire.visible = d < BARRIER_WIRE_DISTANCE;
+      glow.visible = d < BARRIER_GLOW_DISTANCE;
     }
     if (this.track) {
       for (const hoop of this.track.hoops) {
         hoop.mesh.getWorldPosition(this.fadeWorld);
         const d = this.fadeWorld.distanceTo(eye);
-        hoop.material.opacity =
-          hoop.baseOpacity * Math.min(1, Math.max(0.15, (210 - d) / 140));
-        hoop.glowMaterial.opacity =
-          hoop.glowBase * Math.min(1, Math.max(0, (130 - d) / 80));
+        hoop.mesh.visible = d < 140;
+        hoop.glow.visible = d < 75;
       }
     }
   }
@@ -245,16 +280,18 @@ export class SlideSystem extends createSystem({}) {
       if (this.warmupTimer <= 0) {
         this.warmup.removeFromParent();
         this.warmupTrack?.dispose();
-        this.warmupWire?.material.dispose();
-        this.warmupWire?.glow.dispose();
+        this.warmupDetail?.material.dispose();
+        this.warmupDetail?.glowMaterial.dispose();
         this.warmup = null;
         this.warmupTrack = null;
-        this.warmupWire = null;
+        this.warmupDetail = null;
       }
     }
     if (this.track) this.track.uniforms.uTime.value = time / 1000;
-    if (this.track || this.barrierWires.length > 0) this.fadeCourseDetail();
     if (!this.active) return;
+
+    this.spawnQueuedBarrier();
+    this.cullCourseDetail();
 
     this.elapsed += delta;
 

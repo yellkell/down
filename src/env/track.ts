@@ -11,7 +11,7 @@ import {
   MeshBasicMaterial,
   PlaneGeometry,
   ShaderMaterial,
-  SpriteMaterial,
+  Sprite,
   TorusGeometry
 } from '@iwsdk/core';
 
@@ -21,16 +21,11 @@ import { makeGlow } from './fx.js';
 export interface TrackHandles {
   group: Group;
   uniforms: { uTime: { value: number } };
-  /** Hoop meshes + materials so the slide can fade them by distance —
-   * a 3.5cm neon ring is subpixel beyond ~100m and shimmers if left crisp,
-   * and the big additive glow sprites stack ruinously at the vanishing
-   * point on Quest's tiled GPU if every hoop keeps one at full strength. */
+  /** Hoop meshes and glows are visibility-culled by distance. An invisible
+   * object costs no draw at all; zero-opacity transparent objects still do. */
   hoops: Array<{
     mesh: Mesh;
-    material: MeshBasicMaterial;
-    baseOpacity: number;
-    glowMaterial: SpriteMaterial;
-    glowBase: number;
+    glow: Sprite;
   }>;
   dispose: () => void;
 }
@@ -60,8 +55,9 @@ export function createSlideTrack(length: number): TrackHandles {
 
   // --- Ribbon -----------------------------------------------------------
   ribbonMaterial ??= new ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
+    transparent: false,
+    depthWrite: true,
+    depthTest: true,
     side: DoubleSide,
     uniforms: ribbonUniforms,
     vertexShader: /* glsl */ `
@@ -96,11 +92,7 @@ export function createSlideTrack(length: number): TrackHandles {
         vec3 cyan = vec3(0.16, 0.95, 1.0);
         vec3 magenta = vec3(1.0, 0.24, 0.95);
 
-        // End fades so the ribbon dissolves into the void.
-        float endFade = smoothstep(0.0, 0.04, vUv.y) * smoothstep(1.0, 0.92, vUv.y);
-
-        vec3 col = vec3(0.012, 0.014, 0.035); // dark glass bed
-        float alpha = 0.62;
+        vec3 col = vec3(0.012, 0.014, 0.035); // solid dark bed
 
         // Chevron arrows flowing downhill. The pattern must dissolve where a
         // pixel spans a big slice of its wavelength (far away / grazing view):
@@ -117,13 +109,12 @@ export function createSlideTrack(length: number): TrackHandles {
         float divider = lineAt(vLocal.x, -0.75) + lineAt(vLocal.x, -0.25)
                       + lineAt(vLocal.x, 0.25) + lineAt(vLocal.x, 0.75);
         col += magenta * divider * (0.55 + 0.25 * sin(uTime * 3.0));
-        alpha = max(alpha, divider * 0.9);
 
         // Edge glow toward the rails.
         float edge = smoothstep(0.55, 1.05, abs(vLocal.x));
         col += cyan * edge * 0.35;
 
-        gl_FragColor = vec4(col, alpha * endFade);
+        gl_FragColor = vec4(col, 1.0);
       }
     `
   });
@@ -142,10 +133,9 @@ export function createSlideTrack(length: number): TrackHandles {
   railGeometry ??= new BoxGeometry(0.06, 0.06, 1);
   railMaterial ??= new MeshBasicMaterial({
     color: NEON.cyan,
-    blending: AdditiveBlending,
-    transparent: true,
-    opacity: 0.85,
-    depthWrite: false
+    transparent: false,
+    depthWrite: true,
+    depthTest: true
   });
   [-1.15, 1.15].forEach((x) => {
     const rail = new Mesh(railGeometry!, railMaterial!);
@@ -162,10 +152,9 @@ export function createSlideTrack(length: number): TrackHandles {
     const color = i % 2 === 0 ? NEON.cyan : NEON.magenta;
     const material = new MeshBasicMaterial({
       color,
-      blending: AdditiveBlending,
-      transparent: true,
-      opacity: 0.75,
-      depthWrite: false
+      transparent: false,
+      depthWrite: true,
+      depthTest: true
     });
     const hoop = new Mesh(hoopGeometry, material);
     hoop.position.set(0, 1.3, -i * 40);
@@ -177,10 +166,7 @@ export function createSlideTrack(length: number): TrackHandles {
     disposables.push(glow.material);
     hoops.push({
       mesh: hoop,
-      material,
-      baseOpacity: 0.75,
-      glowMaterial: glow.material,
-      glowBase: 0.2
+      glow
     });
   }
 
