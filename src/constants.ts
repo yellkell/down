@@ -21,6 +21,9 @@ export const IS_TURBO = TURBO;
 /** Fallback round length when the music clock isn't available. */
 export const GRID_DURATION = TURBO ? 6 : 30;
 
+/** Each dodge section is a gentle ascent before its much larger drop. */
+export const GRID_CLIMB_HEIGHT = 12;
+
 /**
  * "Run" rides a strict 5s bar loop starting at 1.5s, with section crashes
  * at 61.5 / 121.5 / 181.5 (measured by FFT band analysis). Slides launch

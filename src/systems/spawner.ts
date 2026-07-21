@@ -56,6 +56,7 @@ export class GridSpawnerSystem extends createSystem({}) {
   private markerGeometry = new RingGeometry(0.16, 0.22, 32);
   private canFinish = true;
   private hasSpawnedThisRound = false;
+  private lastRigY = 0;
 
   init(): void {
     const geometries = [
@@ -74,6 +75,7 @@ export class GridSpawnerSystem extends createSystem({}) {
       this.timer = 0;
       this.canFinish = true;
       this.hasSpawnedThisRound = false;
+      this.lastRigY = this.player.position.y;
     });
     on('slide-start', () => this.deactivate());
     on('game-over', () => this.deactivate());
@@ -144,9 +146,14 @@ export class GridSpawnerSystem extends createSystem({}) {
     }
 
     const rigY = this.player.position.y;
+    const rigRise = Math.max(0, rigY - this.lastRigY);
+    this.lastRigY = rigY;
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
-      p.group.position.y += p.speed * delta;
+      // Carry live obstacles and their telegraphs with the ascending deck so
+      // their relative timing and warning position do not drift underneath it.
+      p.group.position.y += p.speed * delta + rigRise;
+      p.marker.position.y = rigY + 0.03;
       p.group.rotation.x += p.spinX * delta;
       p.group.rotation.z += p.spinZ * delta;
 

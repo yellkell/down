@@ -14,6 +14,7 @@ import {
 import { audio } from '../audio.js';
 import {
   BARRIER_SIZE,
+  GRID_CLIMB_HEIGHT,
   GRID_DURATION,
   HEAD_RADIUS,
   IS_TURBO,
@@ -433,6 +434,10 @@ export class GameSystem extends createSystem({
 
     const slide = this.world.getSystem(SlideSystem);
     if (!slide) return;
+    // Land the gentle lift exactly on its crest before generating the slide,
+    // avoiding tiny timing-dependent differences in track and finish length.
+    this.player.position.y =
+      PHASE_HEIGHTS[game.round - 1] + GRID_CLIMB_HEIGHT;
     const targetY = game.isFinal ? WINNER_HEIGHT : PHASE_HEIGHTS[game.round];
     slide.begin({ targetY, isFinal: game.isFinal });
 

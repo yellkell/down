@@ -11,7 +11,12 @@ import {
 } from '@iwsdk/core';
 
 import { audio } from './audio.js';
-import { PHASE_HEIGHTS, SLIDE_ANGLE, WINNER_HEIGHT } from './constants.js';
+import {
+  GRID_CLIMB_HEIGHT,
+  PHASE_HEIGHTS,
+  SLIDE_ANGLE,
+  WINNER_HEIGHT
+} from './constants.js';
 import { SignBoard } from './env/beacon.js';
 import { createClouds } from './env/clouds.js';
 import { Confetti } from './env/extras.js';
@@ -76,9 +81,9 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   // decorations ~150m short of the actual landing point.)
   const slideRun = (drop: number) => drop / Math.tan(SLIDE_ANGLE);
   const finishZ = -(
-    slideRun(PHASE_HEIGHTS[0] - PHASE_HEIGHTS[1]) +
-    slideRun(PHASE_HEIGHTS[1] - PHASE_HEIGHTS[2]) +
-    slideRun(PHASE_HEIGHTS[2] - WINNER_HEIGHT)
+    slideRun(PHASE_HEIGHTS[0] + GRID_CLIMB_HEIGHT - PHASE_HEIGHTS[1]) +
+    slideRun(PHASE_HEIGHTS[1] + GRID_CLIMB_HEIGHT - PHASE_HEIGHTS[2]) +
+    slideRun(PHASE_HEIGHTS[2] + GRID_CLIMB_HEIGHT - WINNER_HEIGHT)
   );
   const finish = createFinishZone(new Vector3(0, WINNER_HEIGHT, finishZ));
   finish.visible = false;

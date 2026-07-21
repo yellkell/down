@@ -1,7 +1,7 @@
 import { createSystem, Group, Vector3 } from '@iwsdk/core';
 
 import {
-  GRID_DURATION,
+  GRID_CLIMB_HEIGHT,
   PHASE_HEIGHTS,
   SLIDE_SPEED,
   TOTAL_ROUNDS,
@@ -51,6 +51,23 @@ export class EnvironmentSystem extends createSystem({}) {
     const env = this.env;
     if (!env) return;
 
+    // The block sections are the route's short uphill legs. Lift the whole
+    // player rig slowly; the platform follows below, so the ascent is real in
+    // VR and the altitude readout naturally rolls upward. The fixed cap keeps
+    // music timing or a stalled phase from accumulating extra height.
+    const roundIndex = Math.min(game.round, TOTAL_ROUNDS) - 1;
+    if (game.phase === 'GRID' && game.timeInPhase > 0) {
+      const climbDuration = game.timeInPhase + game.roundRemaining;
+      const climbProgress =
+        climbDuration > 0
+          ? Math.min(1, Math.max(0, game.timeInPhase / climbDuration))
+          : 1;
+      const climbEase =
+        climbProgress * climbProgress * (3 - 2 * climbProgress);
+      this.player.position.y =
+        PHASE_HEIGHTS[roundIndex] + GRID_CLIMB_HEIGHT * climbEase;
+    }
+
     const t = time / 1000;
     env.sky.uniforms.uTime.value = t;
     env.platform.uniforms.uTime.value = t;
@@ -96,19 +113,22 @@ export class EnvironmentSystem extends createSystem({}) {
     env.streaks.object.visible =
       streaks.uStrength.value > 0.02 || this.warmTimer > 0;
 
-    const roundIndex = Math.min(game.round, TOTAL_ROUNDS) - 1;
     let routePosition: number | null = null;
     let routeMode: 'idle' | 'climb' | 'drop' | 'finish' = 'idle';
 
     if (game.phase === 'GRID') {
       const climb = Math.min(
         1,
-        Math.max(0, game.timeInPhase / GRID_DURATION)
+        Math.max(
+          0,
+          (this.player.position.y - PHASE_HEIGHTS[roundIndex]) /
+            GRID_CLIMB_HEIGHT
+        )
       );
       routePosition = roundIndex * 2 + climb;
       routeMode = 'climb';
     } else if (game.phase === 'SLIDE') {
-      const startY = PHASE_HEIGHTS[roundIndex];
+      const startY = PHASE_HEIGHTS[roundIndex] + GRID_CLIMB_HEIGHT;
       const targetY = game.isFinal ? WINNER_HEIGHT : PHASE_HEIGHTS[roundIndex + 1];
       const drop = Math.min(
         1,
