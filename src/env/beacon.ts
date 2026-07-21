@@ -33,6 +33,7 @@ type RouteMode = 'idle' | 'climb' | 'drop' | 'finish';
 export class SignBoard {
   readonly group = new Group();
   private readonly arrow = new Group();
+  private readonly youLabel: Mesh;
   private readonly arrowMaterial: MeshBasicMaterial;
   private readonly arrowGlowMaterial: MeshBasicMaterial;
   private readonly altitudeContext: CanvasRenderingContext2D;
@@ -111,6 +112,37 @@ export class SignBoard {
     this.arrow.position.z = 0.12;
     this.arrow.renderOrder = 49;
     this.group.add(this.arrow);
+
+    const youCanvas = document.createElement('canvas');
+    youCanvas.width = 256;
+    youCanvas.height = 96;
+    const youContext = youCanvas.getContext('2d')!;
+    youContext.font = '900 68px monospace';
+    youContext.textAlign = 'center';
+    youContext.textBaseline = 'middle';
+    youContext.fillStyle = '#ffffff';
+    youContext.shadowColor = '#29f3ff';
+    youContext.shadowBlur = 12;
+    youContext.fillText('YOU', youCanvas.width / 2, youCanvas.height / 2 + 2);
+    const youTexture = new CanvasTexture(youCanvas);
+    youTexture.colorSpace = SRGBColorSpace;
+    youTexture.generateMipmaps = false;
+    youTexture.minFilter = LinearFilter;
+    youTexture.magFilter = LinearFilter;
+    this.youLabel = new Mesh(
+      new PlaneGeometry(0.72, 0.27),
+      new MeshBasicMaterial({
+        map: youTexture,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        side: DoubleSide
+      })
+    );
+    this.youLabel.position.z = 0.13;
+    this.youLabel.renderOrder = 51;
+    this.youLabel.frustumCulled = false;
+    this.group.add(this.youLabel);
 
     const altitudeCanvas = document.createElement('canvas');
     altitudeCanvas.width = 576;
@@ -250,9 +282,16 @@ export class SignBoard {
     const t = progress - i;
     const a = ROUTE[i];
     const b = ROUTE[i + 1];
-    this.arrow.position.x = a[0] + (b[0] - a[0]) * t;
-    this.arrow.position.y = a[1] + (b[1] - a[1]) * t;
-    this.arrow.rotation.z = Math.atan2(-0.72, -0.68);
+    const targetX = a[0] + (b[0] - a[0]) * t;
+    const targetY = a[1] + (b[1] - a[1]) * t;
+    const pointsDownLeft = this.mode === 'drop' || this.mode === 'finish';
+    this.arrow.position.set(targetX, targetY, 0.12);
+    this.arrow.rotation.z = Math.atan2(-0.72, pointsDownLeft ? -0.68 : 0.68);
+    this.youLabel.position.set(
+      targetX + (pointsDownLeft ? 0.48 : -0.48),
+      targetY + 0.67,
+      0.13
+    );
   }
 
   private drawAltitude(
