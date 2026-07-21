@@ -169,7 +169,7 @@ export class SignBoard {
     altitudePlate.renderOrder = 35;
     altitudePlate.frustumCulled = false;
     this.group.add(altitudePlate);
-    this.drawAltitude(0, 1);
+    this.drawAltitude(0);
 
     // Countdown has its own tiny texture. Hiding it at slide launch changes
     // only mesh visibility; it no longer forces the altitude canvas to redraw
@@ -282,10 +282,7 @@ export class SignBoard {
             : NEON.magenta;
     this.arrowMaterial.color.setHex(routeColor);
     this.arrowGlowMaterial.color.setHex(routeColor);
-    this.drawAltitude(
-      altitudeMeters,
-      mode === 'drop' || mode === 'climb' ? 2 : 1
-    );
+    this.drawAltitude(altitudeMeters);
     this.drawCountdown(countdown);
 
     this.milestonePulse = Math.max(0, this.milestonePulse - dt * 1.3);
@@ -313,18 +310,8 @@ export class SignBoard {
     );
   }
 
-  private drawAltitude(
-    altitudeMeters: number,
-    altitudeStep: number
-  ): void {
-    // During a drop this is a GPU texture upload, not just a text change.
-    // Two-metre steps give both moving legs a consistent rolling readout
-    // while halving the upload rate; stationary altitude retains one-metre
-    // precision.
-    const altitude = Math.max(
-      0,
-      Math.round(altitudeMeters / altitudeStep) * altitudeStep
-    );
+  private drawAltitude(altitudeMeters: number): void {
+    const altitude = Math.max(0, Math.round(altitudeMeters));
     if (altitude === this.altitudeValue) return;
     this.altitudeValue = altitude;
 
