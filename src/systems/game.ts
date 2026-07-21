@@ -328,6 +328,7 @@ export class GameSystem extends createSystem({
     if (!this.nameActive) return;
     const name = this.nameBuf.trim();
     if (!name) return; // nothing typed — the caret keeps blinking at them
+    this.env?.signs.setBravo(false);
     this.setNamePanelShown(false);
     void submitMark(name); // fire-and-forget; the wall catches up next visit
     const env = this.env;
@@ -351,6 +352,7 @@ export class GameSystem extends createSystem({
   private skipTag(): void {
     if (!this.nameActive) return;
     this.nameActive = false;
+    this.env?.signs.setBravo(false);
     this.setNamePanelShown(false);
     this.setEndPanelShown(true);
     this.endArm = 0;
@@ -454,6 +456,7 @@ export class GameSystem extends createSystem({
     game.phase = 'WIN';
     audio.play('welldone');
     this.env?.signs.show(3);
+    this.env?.signs.setBravo(true);
     this.player.head.getWorldPosition(this.headWorld);
     this.env?.confetti.start(this.headWorld.clone());
 
@@ -474,6 +477,7 @@ export class GameSystem extends createSystem({
 
   private gameOver(): void {
     game.phase = 'GAME_OVER';
+    this.env?.signs.setBravo(false);
     audio.play('die');
     window.setTimeout(() => audio.play('gameover'), 250);
     audio.stopMusic();

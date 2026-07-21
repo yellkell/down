@@ -41,8 +41,8 @@ export class SignBoard {
   private readonly countdownContext: CanvasRenderingContext2D;
   private readonly countdownTexture: CanvasTexture;
   private readonly countdownPlate: Mesh;
+  private readonly bravoLabel: Mesh;
   private readonly scanLine: Mesh;
-  private readonly scanMaterial: MeshBasicMaterial;
   private altitudeValue = -1;
   private countdownValue: number | null = null;
   private progress = 0;
@@ -200,18 +200,50 @@ export class SignBoard {
     this.countdownPlate.visible = false;
     this.group.add(this.countdownPlate);
 
-    this.scanMaterial = new MeshBasicMaterial({
-      map: drawScanTexture(),
-      transparent: true,
-      opacity: 0.7,
-      blending: AdditiveBlending,
-      depthTest: false,
-      depthWrite: false,
-      side: DoubleSide
-    });
+    const bravoCanvas = document.createElement('canvas');
+    bravoCanvas.width = 768;
+    bravoCanvas.height = 192;
+    const bravoContext = bravoCanvas.getContext('2d')!;
+    bravoContext.font = '900 132px monospace';
+    bravoContext.textAlign = 'center';
+    bravoContext.textBaseline = 'middle';
+    bravoContext.fillStyle = '#ffffff';
+    bravoContext.shadowColor = '#29f3ff';
+    bravoContext.shadowBlur = 22;
+    bravoContext.fillText('BRAVO!', bravoCanvas.width / 2, bravoCanvas.height / 2 + 4);
+    const bravoTexture = new CanvasTexture(bravoCanvas);
+    bravoTexture.colorSpace = SRGBColorSpace;
+    bravoTexture.generateMipmaps = false;
+    bravoTexture.minFilter = LinearFilter;
+    bravoTexture.magFilter = LinearFilter;
+    this.bravoLabel = new Mesh(
+      new PlaneGeometry(3.55, 0.88),
+      new MeshBasicMaterial({
+        map: bravoTexture,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        side: DoubleSide
+      })
+    );
+    this.bravoLabel.position.set(0.35, 0.55, 0.14);
+    this.bravoLabel.renderOrder = 52;
+    this.bravoLabel.frustumCulled = false;
+    this.bravoLabel.visible = false;
+    this.group.add(this.bravoLabel);
+
+    // A single full-width opaque mesh replaces the large additive scan
+    // texture. It reaches the frame on both sides and avoids putting another
+    // wide transparent layer through Quest's stereo transparency pass.
     this.scanLine = new Mesh(
-      new PlaneGeometry(BEACON_W - 0.5, 0.32),
-      this.scanMaterial
+      new PlaneGeometry(BEACON_W, 0.018),
+      new MeshBasicMaterial({
+        color: NEON.cyan,
+        transparent: false,
+        depthTest: true,
+        depthWrite: false,
+        side: DoubleSide
+      })
     );
     this.scanLine.position.z = 0.045;
     this.scanLine.renderOrder = 20;
@@ -220,6 +252,10 @@ export class SignBoard {
     this.group.position.set(-7.5, 2.4, -9.5);
     this.group.rotation.y = Math.PI / 7;
     this.placeArrow(0);
+  }
+
+  setBravo(visible: boolean): void {
+    this.bravoLabel.visible = visible;
   }
 
   /** Flash the arrow when a new descent sector is reached. */
@@ -232,6 +268,7 @@ export class SignBoard {
     this.targetProgress = 0;
     this.milestonePulse = 0;
     this.mode = 'idle';
+    this.bravoLabel.visible = false;
     this.placeArrow(0);
   }
 
@@ -274,7 +311,6 @@ export class SignBoard {
     const scanT = (this.time * 0.11) % 1;
     const scanEase = scanT * scanT * (3 - 2 * scanT);
     this.scanLine.position.y = -1.7 + scanEase * 3.4;
-    this.scanMaterial.opacity = Math.sin(Math.PI * scanT) ** 0.65 * 0.74;
   }
 
   private placeArrow(progress: number): void {
@@ -345,52 +381,6 @@ export class SignBoard {
     this.countdownTexture.needsUpdate = true;
     this.countdownPlate.visible = true;
   }
-}
-
-/** A high-resolution luminous sampling band with soft falloff and crisp echoes. */
-function drawScanTexture(): CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 128;
-  const ctx = canvas.getContext('2d')!;
-
-  const verticalGlow = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  verticalGlow.addColorStop(0, 'rgba(41, 243, 255, 0)');
-  verticalGlow.addColorStop(0.32, 'rgba(41, 243, 255, 0.025)');
-  verticalGlow.addColorStop(0.47, 'rgba(41, 243, 255, 0.16)');
-  verticalGlow.addColorStop(0.5, 'rgba(200, 252, 255, 0.92)');
-  verticalGlow.addColorStop(0.535, 'rgba(41, 243, 255, 0.13)');
-  verticalGlow.addColorStop(1, 'rgba(41, 243, 255, 0)');
-  ctx.fillStyle = verticalGlow;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Fade the band before the cyan frame so it feels embedded in the display.
-  ctx.globalCompositeOperation = 'destination-in';
-  const horizontalFade = ctx.createLinearGradient(0, 0, canvas.width, 0);
-  horizontalFade.addColorStop(0, 'rgba(255,255,255,0)');
-  horizontalFade.addColorStop(0.055, 'rgba(255,255,255,1)');
-  horizontalFade.addColorStop(0.945, 'rgba(255,255,255,1)');
-  horizontalFade.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = horizontalFade;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.globalCompositeOperation = 'lighter';
-  const core = ctx.createLinearGradient(0, 0, canvas.width, 0);
-  core.addColorStop(0, 'rgba(41,243,255,0)');
-  core.addColorStop(0.08, 'rgba(41,243,255,0.72)');
-  core.addColorStop(0.5, 'rgba(235,255,255,1)');
-  core.addColorStop(0.92, 'rgba(41,243,255,0.72)');
-  core.addColorStop(1, 'rgba(41,243,255,0)');
-  ctx.fillStyle = core;
-  ctx.fillRect(0, 62, canvas.width, 3);
-
-  ctx.fillStyle = 'rgba(41,243,255,0.18)';
-  ctx.fillRect(70, 48, canvas.width - 140, 1);
-  ctx.fillRect(70, 79, canvas.width - 140, 1);
-
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  return texture;
 }
 
 function drawBeaconTexture(): CanvasTexture {
