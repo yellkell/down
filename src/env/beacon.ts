@@ -396,7 +396,6 @@ function drawBeaconTexture(): CanvasTexture {
   ];
   const route = ROUTE.map(toCanvas);
   const mountainBase = canvas.height - 18;
-  drawBoardFrame(ctx, canvas.width, canvas.height);
   drawFinishGate(ctx, route[route.length - 1], mountainBase);
 
   const texture = new CanvasTexture(canvas);
@@ -408,33 +407,12 @@ function drawBeaconTexture(): CanvasTexture {
   const mountain = new Image();
   mountain.onload = () => {
     ctx.drawImage(mountain, 0, 0, canvas.width, canvas.height);
-    drawBoardFrame(ctx, canvas.width, canvas.height);
     drawFinishGate(ctx, route[route.length - 1], mountainBase);
     texture.needsUpdate = true;
   };
   mountain.src = './images/mountain-route-v2.png';
 
   return texture;
-}
-
-function drawBoardFrame(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number
-): void {
-  ctx.save();
-  ctx.lineWidth = 8;
-  ctx.strokeStyle = '#29f3ff';
-  ctx.shadowColor = '#29f3ff';
-  ctx.shadowBlur = 22;
-  ctx.strokeRect(18, 18, width - 36, height - 36);
-  ctx.strokeStyle = '#ff3df2';
-  ctx.beginPath();
-  ctx.moveTo(18, 170);
-  ctx.lineTo(18, 18);
-  ctx.lineTo(310, 18);
-  ctx.stroke();
-  ctx.restore();
 }
 
 function drawFinishGate(
