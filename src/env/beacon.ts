@@ -42,7 +42,6 @@ export class SignBoard {
   private readonly countdownTexture: CanvasTexture;
   private readonly countdownPlate: Mesh;
   private readonly bravoLabel: Mesh;
-  private readonly scanLine: Mesh;
   private altitudeValue = -1;
   private countdownValue: number | null = null;
   private progress = 0;
@@ -232,23 +231,6 @@ export class SignBoard {
     this.bravoLabel.visible = false;
     this.group.add(this.bravoLabel);
 
-    // A single full-width opaque mesh replaces the large additive scan
-    // texture. It reaches the frame on both sides and avoids putting another
-    // wide transparent layer through Quest's stereo transparency pass.
-    this.scanLine = new Mesh(
-      new PlaneGeometry(BEACON_W, 0.018),
-      new MeshBasicMaterial({
-        color: NEON.cyan,
-        transparent: false,
-        depthTest: true,
-        depthWrite: false,
-        side: DoubleSide
-      })
-    );
-    this.scanLine.position.z = 0.045;
-    this.scanLine.renderOrder = 20;
-    this.group.add(this.scanLine);
-
     this.group.position.set(-7.5, 2.4, -9.5);
     this.group.rotation.y = Math.PI / 7;
     this.placeArrow(0);
@@ -308,9 +290,6 @@ export class SignBoard {
     this.arrow.scale.setScalar(pulse);
     this.arrowGlowMaterial.opacity = 0.14 + 0.08 * Math.sin(this.time * 5) ** 2;
 
-    const scanT = (this.time * 0.11) % 1;
-    const scanEase = scanT * scanT * (3 - 2 * scanT);
-    this.scanLine.position.y = -1.7 + scanEase * 3.4;
   }
 
   private placeArrow(progress: number): void {
