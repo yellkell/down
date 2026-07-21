@@ -230,11 +230,12 @@ export class SignBoard {
     ctx.fillText(`ALT ${altitude}M`, width - 36, height / 2 + 3);
 
     if (countdown !== null) {
-      ctx.font = '800 74px monospace';
+      // Near-full height of the strip — at 74px the 3-2-1 was a sliver.
+      ctx.font = '800 112px monospace';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ffb347';
       ctx.shadowColor = '#ff6a2f';
-      ctx.shadowBlur = 22;
+      ctx.shadowBlur = 26;
       ctx.fillText(String(countdown), 84, height / 2 + 2);
     }
     this.altitudeTexture.needsUpdate = true;
