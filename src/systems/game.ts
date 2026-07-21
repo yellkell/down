@@ -32,24 +32,19 @@ import { SlideSystem } from './slide.js';
 
 export interface PanelEntities {
   start: Entity;
-  hud: Entity;
   end: Entity;
   warn: Entity;
   name: Entity;
 }
 
 /**
- * The referee: phase state machine, collision detection, HUD text,
- * warnings, audio stingers, and the win/lose panels.
+ * The referee: phase state machine, collision detection, warnings,
+ * audio stingers, and the win/lose panels.
  */
 export class GameSystem extends createSystem({
   startPanel: {
     required: [PanelUI, PanelDocument],
     where: [eq(PanelUI, 'config', './ui/start.json')]
-  },
-  hudPanel: {
-    required: [PanelUI, PanelDocument],
-    where: [eq(PanelUI, 'config', './ui/hud.json')]
   },
   endPanel: {
     required: [PanelUI, PanelDocument],
@@ -67,19 +62,12 @@ export class GameSystem extends createSystem({
   private headWorld = new Vector3();
   private projectilePos = new Vector3();
 
-  // HUD element refs (resolved once each panel's document loads).
-  private hudRound: UIKit.Text | null = null;
-  private hudTimer: UIKit.Text | null = null;
-  private hudAlt: UIKit.Text | null = null;
-  private hudStatus: UIKit.Text | null = null;
   private warnText: UIKit.Text | null = null;
   private endTitle: UIKit.Text | null = null;
   private endStats: UIKit.Text | null = null;
   private nameDisplay: UIKit.Text | null = null;
 
-  private hudCache: Record<string, string> = {};
   private warnTimer = 0;
-  private introTimer = 0;
   private beepAt = 0;
   private started = false;
   private musicStartTimer: number | null = null;
@@ -97,6 +85,10 @@ export class GameSystem extends createSystem({
   private nameActive = false;
   /** The name being typed on the finish-line keyboard. */
   private nameBuf = '';
+  private endPanelShown = false;
+  private endPanelCanHide = false;
+  private endTitleValue = 'GAME OVER';
+  private endStatsValue = 'ROUND 1/3';
 
   private get panels(): PanelEntities {
     return this.globals.panels as PanelEntities;
@@ -108,7 +100,6 @@ export class GameSystem extends createSystem({
 
   init(): void {
     this.wireStartPanel();
-    this.wireHudPanel();
     this.wireEndPanel();
     this.wireWarnPanel();
     this.wireNamePanel();
@@ -129,6 +120,8 @@ export class GameSystem extends createSystem({
 
   /** Start immediately — used by the 2D "PREVIEW IN BROWSER" (desktop). */
   beginRun(): void {
+    this.endPanelCanHide = true;
+    this.setEndPanelShown(false);
     this.startGame();
   }
 
@@ -140,6 +133,11 @@ export class GameSystem extends createSystem({
     if (this.started) return;
     this.lobbyActive = true;
     this.lobbyArm = 0;
+    // Keep the result panel renderable through boot so UIKit has time to
+    // build its first glyph atlas. The lobby is the first safe point to hide
+    // it: the start panel is now ready and no result can be showing yet.
+    this.endPanelCanHide = true;
+    this.setEndPanelShown(false);
     this.setStartPanelShown(true);
     this.setPointersVisible(true);
   }
@@ -175,25 +173,20 @@ export class GameSystem extends createSystem({
     });
   }
 
-  private wireHudPanel(): void {
-    this.queries.hudPanel.subscribe('qualify', (entity) => {
-      const doc = this.getDocument(entity);
-      if (!doc) return;
-      this.hudRound = doc.getElementById('round-label') as UIKit.Text;
-      this.hudTimer = doc.getElementById('timer-label') as UIKit.Text;
-      this.hudAlt = doc.getElementById('alt-label') as UIKit.Text;
-      this.hudStatus = doc.getElementById('status-label') as UIKit.Text;
-    });
-  }
-
   private wireEndPanel(): void {
     this.queries.endPanel.subscribe('qualify', (entity) => {
       const doc = this.getDocument(entity);
       if (!doc) return;
       this.endTitle = doc.getElementById('end-title') as UIKit.Text;
       this.endStats = doc.getElementById('end-stats') as UIKit.Text;
+      this.applyEndContent();
       const retryBtn = doc.getElementById('retry-btn') as UIKit.Text;
       retryBtn?.addEventListener('click', () => this.retry());
+      // The first result can arrive while UIKit is still constructing this
+      // document. Reapply both placement and render priority once its meshes
+      // actually exist, rather than waiting for a second game over.
+      if (this.endPanelShown) this.setEndPanelShown(true);
+      else if (this.endPanelCanHide) this.setEndPanelShown(false);
     });
   }
 
@@ -262,9 +255,9 @@ export class GameSystem extends createSystem({
 
   /**
    * Force a menu panel to draw on top of the world. The finish sits amid the
-   * translucent cloud sea, whose transparent planes were washing over the
-   * end panel; disabling depth test + a huge render order keeps the menu
-   * crisp and readable no matter what FX is around it.
+   * translucent cloud sea, whose transparent planes can wash over menus.
+   * Raise UIKit's complete ordering block while preserving its internal
+   * glyph/background depth relationship.
    */
   private bringPanelToFront(entity: Entity | undefined): void {
     const root = entity?.object3D;
@@ -277,27 +270,42 @@ export class GameSystem extends createSystem({
         renderOrder: number;
       };
       if (!mesh.isMesh && !mesh.isInstancedMesh) return;
-      mesh.renderOrder = 10000;
+      const storedOrder = node.userData.panelBaseRenderOrder;
+      const baseOrder = typeof storedOrder === 'number' ? storedOrder : mesh.renderOrder;
+      node.userData.panelBaseRenderOrder = baseOrder;
+      // Lift UIKit's own ordering as a block. Its existing order and depth
+      // offsets keep glyphs above their backgrounds; replacing them made the
+      // first result panel render as empty rectangles.
+      mesh.renderOrder = 10000 + baseOrder;
       const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       mats.forEach((m) => {
         if (m) {
-          m.depthTest = false;
+          m.depthTest = true;
           m.depthWrite = false;
         }
       });
     });
   }
 
-  /**
-   * The end panel is never visibility-toggled — hide/re-show cycles can
-   * leave a panel's interaction stale for controller rays. It stays live
-   * and simply parks far below the world until it's needed.
-   */
+  /** Toggle both the entity and UIKit's separately reparented document. */
   private setEndPanelShown(shown: boolean): void {
+    this.endPanelShown = shown;
     const entity = this.panels?.end;
     if (!entity?.object3D) return;
-    entity.object3D.position.set(0, shown ? 1.45 : -9999, -1.8);
+    entity.object3D.position.set(0, 1.45, -1.8);
+    this.setPanelVisible(entity, shown);
     if (shown) this.bringPanelToFront(entity);
+  }
+
+  private setEndContent(title: string, stats: string): void {
+    this.endTitleValue = title;
+    this.endStatsValue = stats;
+    this.applyEndContent();
+  }
+
+  private applyEndContent(): void {
+    this.endTitle?.setProperties({ text: this.endTitleValue });
+    this.endStats?.setProperties({ text: this.endStatsValue });
   }
 
   /** Same park-below trick for the in-VR start lobby. */
@@ -383,20 +391,6 @@ export class GameSystem extends createSystem({
     this.endArm = 0;
   }
 
-  private setHud(key: 'round' | 'timer' | 'alt' | 'status', value: string): void {
-    if (this.hudCache[key] === value) return;
-    this.hudCache[key] = value;
-    const el =
-      key === 'round'
-        ? this.hudRound
-        : key === 'timer'
-          ? this.hudTimer
-          : key === 'alt'
-            ? this.hudAlt
-            : this.hudStatus;
-    el?.setProperties({ text: value });
-  }
-
   private showWarning(text: string, seconds: number): void {
     this.warnText?.setProperties({ text });
     this.setPanelVisible(this.panels?.warn, true);
@@ -422,7 +416,6 @@ export class GameSystem extends createSystem({
     this.lobbyActive = false;
     this.setStartPanelShown(false);
     this.startRunAudio();
-    this.setPanelVisible(this.panels?.hud, true);
     this.setPointersVisible(false);
     emit('game-start');
     this.enterGrid(1.6);
@@ -440,9 +433,7 @@ export class GameSystem extends createSystem({
     this.winWait = 0;
     this.nameActive = false;
     this.nameBuf = '';
-    this.setPanelVisible(this.panels?.hud, true);
     this.setPointersVisible(false);
-    this.hudCache = {};
     this.startRunAudio();
     this.enterGrid(1.6);
   }
@@ -502,11 +493,10 @@ export class GameSystem extends createSystem({
     this.player.head.getWorldPosition(this.headWorld);
     this.env?.confetti.start(this.headWorld.clone());
 
-    this.endTitle?.setProperties({ text: 'YOU MADE IT!' });
-    this.endStats?.setProperties({
-      text: `${TOTAL_DESCENT}M DESCENDED  ·  ${this.formatTime(game.runTime)}`
-    });
-    this.setPanelVisible(this.panels?.hud, false);
+    this.setEndContent(
+      'YOU MADE IT!',
+      `${TOTAL_DESCENT}M DESCENDED  ·  ${this.formatTime(game.runTime)}`
+    );
     this.setPanelVisible(this.panels?.warn, false);
 
     // Let the landing breathe — confetti and the finish sign get a few
@@ -526,11 +516,10 @@ export class GameSystem extends createSystem({
     emit('game-over');
 
     const altitude = Math.round(this.player.position.y);
-    this.endTitle?.setProperties({ text: 'GAME OVER' });
-    this.endStats?.setProperties({
-      text: `ROUND ${game.round}/${TOTAL_ROUNDS}  ·  ALT ${altitude}M  ·  ${this.formatTime(game.runTime)}`
-    });
-    this.setPanelVisible(this.panels?.hud, false);
+    this.setEndContent(
+      'GAME OVER',
+      `ROUND ${game.round}/${TOTAL_ROUNDS}  ·  ALT ${altitude}M  ·  ${this.formatTime(game.runTime)}`
+    );
     this.setPanelVisible(this.panels?.warn, false);
     this.setEndPanelShown(true);
     this.setPointersVisible(true);
@@ -608,26 +597,15 @@ export class GameSystem extends createSystem({
       this.warnTimer -= delta;
       if (this.warnTimer <= 0) this.setPanelVisible(this.panels?.warn, false);
     }
-    if (this.introTimer > 0) this.introTimer -= delta;
-
     this.player.head.getWorldPosition(this.headWorld);
-    // Clamp at 0 so the readout never flashes a negative meter near the
-    // finish. Fixed-width label (set in hud.uikitml) keeps the digit count
-    // changing without reflowing the HUD.
-    const alt = Math.max(0, Math.round(this.player.position.y - WINNER_HEIGHT));
-    this.setHud('alt', `ALT ${alt}M`);
 
-    // Settle beat: freshly landed, holding before the blocks rise. No timer,
+    // Settle beat: freshly landed, holding before the blocks rise.
     // no spawns, no collisions — just recover your footing and look down.
     if (game.phase === 'GRID' && this.gridHold > 0) {
       this.gridHold -= delta;
       game.roundRemaining = this.roundRemaining();
-      this.setHud('round', `ROUND ${game.round}/${TOTAL_ROUNDS}`);
-      this.setHud('timer', Math.ceil(game.roundRemaining).toFixed(0));
-      this.setHud('status', 'STEADY — LOOK DOWN');
       if (this.gridHold <= 0) {
         this.beepAt = 3;
-        this.introTimer = 2.5;
         emit('grid-start');
       }
       return;
@@ -645,9 +623,6 @@ export class GameSystem extends createSystem({
   private updateGrid(delta: number): void {
     const remaining = this.roundRemaining();
     game.roundRemaining = remaining;
-    this.setHud('round', `ROUND ${game.round}/${TOTAL_ROUNDS}`);
-    this.setHud('timer', Math.ceil(remaining).toFixed(0));
-
     const spawner = this.world.getSystem(GridSpawnerSystem);
 
     // The LOOK FORWARD riser launches right behind the round's final
@@ -666,18 +641,11 @@ export class GameSystem extends createSystem({
     if (remaining <= 3 && remaining > 0) {
       // Slide incoming: clear the field, pulse the deck, beep the countdown.
       game.warning = 1;
-      this.setHud('status', game.round >= TOTAL_ROUNDS ? 'FINAL DROP INCOMING' : 'SLIDE INCOMING');
       spawner?.holdFire();
       if (remaining <= this.beepAt) {
         audio.play('square', 0.7);
         this.beepAt -= 1;
       }
-    } else if (game.danger > 0.55) {
-      this.setHud('status', 'STAY ON THE GRID');
-    } else if (this.introTimer > 0) {
-      this.setHud('status', 'DODGE WHAT RISES');
-    } else {
-      this.setHud('status', '');
     }
 
     if (remaining <= 0) {
@@ -709,10 +677,6 @@ export class GameSystem extends createSystem({
   }
 
   private updateSlide(): void {
-    this.setHud('round', game.isFinal ? 'FINAL DROP' : `ROUND ${game.round}/${TOTAL_ROUNDS}`);
-    this.setHud('timer', 'V');
-    this.setHud('status', 'LEAN BETWEEN THE BARRIERS');
-
     if (this.visibilityState.value === VisibilityState.NonImmersive) return;
 
     const slide = this.world.getSystem(SlideSystem);

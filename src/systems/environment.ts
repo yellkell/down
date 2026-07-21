@@ -114,7 +114,8 @@ export class EnvironmentSystem extends createSystem({}) {
       routePosition = 0;
     }
 
-    env.signs.update(delta, routePosition, routeMode);
+    const altitude = Math.max(0, Math.round(this.player.position.y - WINNER_HEIGHT));
+    env.signs.update(delta, routePosition, routeMode, altitude);
 
     this.player.head.getWorldPosition(this.headWorld);
     env.confetti.update(delta, this.headWorld);

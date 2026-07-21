@@ -34,7 +34,10 @@ export class SignBoard {
   private readonly arrow = new Group();
   private readonly arrowMaterial: MeshBasicMaterial;
   private readonly arrowGlowMaterial: MeshBasicMaterial;
+  private readonly altitudeContext: CanvasRenderingContext2D;
+  private readonly altitudeTexture: CanvasTexture;
   private readonly scanLine: Mesh;
+  private altitudeValue = -1;
   private progress = 0;
   private targetProgress = 0;
   private milestonePulse = 0;
@@ -56,8 +59,8 @@ export class SignBoard {
     // This is a real mesh above the map, not another baked texture frame.
     this.arrowMaterial = new MeshBasicMaterial({
       color: NEON.amber,
-      transparent: true,
-      opacity: 1,
+      transparent: false,
+      depthTest: false,
       depthWrite: false,
       side: DoubleSide
     });
@@ -74,20 +77,48 @@ export class SignBoard {
     const arrowGeometry = new ShapeGeometry(arrowShape);
     const arrowCore = new Mesh(arrowGeometry, this.arrowMaterial);
     arrowCore.position.z = 0.01;
+    arrowCore.renderOrder = 50;
+    arrowCore.frustumCulled = false;
 
     this.arrowGlowMaterial = new MeshBasicMaterial({
       color: NEON.amber,
       transparent: true,
       opacity: 0.2,
       blending: AdditiveBlending,
+      depthTest: false,
       depthWrite: false,
       side: DoubleSide
     });
     const arrowGlow = new Mesh(arrowGeometry, this.arrowGlowMaterial);
     arrowGlow.scale.setScalar(1.2);
+    arrowGlow.renderOrder = 49;
+    arrowGlow.frustumCulled = false;
     this.arrow.add(arrowGlow, arrowCore);
-    this.arrow.position.z = 0.06;
+    this.arrow.position.z = 0.12;
+    this.arrow.renderOrder = 49;
     this.group.add(this.arrow);
+
+    const altitudeCanvas = document.createElement('canvas');
+    altitudeCanvas.width = 512;
+    altitudeCanvas.height = 128;
+    this.altitudeContext = altitudeCanvas.getContext('2d')!;
+    this.altitudeTexture = new CanvasTexture(altitudeCanvas);
+    this.altitudeTexture.colorSpace = SRGBColorSpace;
+    const altitudePlate = new Mesh(
+      new PlaneGeometry(1.8, 0.45),
+      new MeshBasicMaterial({
+        map: this.altitudeTexture,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        side: DoubleSide
+      })
+    );
+    altitudePlate.position.set(2.12, 1.78, 0.1);
+    altitudePlate.renderOrder = 35;
+    altitudePlate.frustumCulled = false;
+    this.group.add(altitudePlate);
+    this.drawAltitude(0);
 
     this.scanLine = new Mesh(
       new PlaneGeometry(BEACON_W - 0.48, 0.025),
@@ -96,11 +127,13 @@ export class SignBoard {
         transparent: true,
         opacity: 0.48,
         blending: AdditiveBlending,
+        depthTest: false,
         depthWrite: false,
         side: DoubleSide
       })
     );
     this.scanLine.position.z = 0.045;
+    this.scanLine.renderOrder = 20;
     this.group.add(this.scanLine);
 
     this.group.position.set(-7.5, 2.4, -9.5);
@@ -121,7 +154,12 @@ export class SignBoard {
     this.placeArrow(0);
   }
 
-  update(dt: number, routePosition: number | null, mode: RouteMode): void {
+  update(
+    dt: number,
+    routePosition: number | null,
+    mode: RouteMode,
+    altitudeMeters: number
+  ): void {
     this.time += dt;
     this.group.position.y = 2.4 + Math.sin(this.time * 0.6) * 0.18;
 
@@ -143,11 +181,11 @@ export class SignBoard {
             : NEON.magenta;
     this.arrowMaterial.color.setHex(routeColor);
     this.arrowGlowMaterial.color.setHex(routeColor);
+    this.drawAltitude(altitudeMeters);
 
     this.milestonePulse = Math.max(0, this.milestonePulse - dt * 1.3);
     const pulse = 1 + this.milestonePulse * 0.28 + Math.sin(this.time * 6) * 0.025;
     this.arrow.scale.setScalar(pulse);
-    this.arrowMaterial.opacity = 0.9 + 0.1 * Math.sin(this.time * 7) ** 2;
     this.arrowGlowMaterial.opacity = 0.14 + 0.08 * Math.sin(this.time * 5) ** 2;
 
     const scanT = (this.time * 0.18) % 1;
@@ -166,6 +204,29 @@ export class SignBoard {
     this.arrow.position.x = a[0] + dx * t - (dy / segmentLength) * sideOffset;
     this.arrow.position.y = a[1] + dy * t + (dx / segmentLength) * sideOffset;
     this.arrow.rotation.z = Math.atan2(dy, dx);
+  }
+
+  private drawAltitude(altitudeMeters: number): void {
+    const altitude = Math.max(0, Math.round(altitudeMeters));
+    if (altitude === this.altitudeValue) return;
+    this.altitudeValue = altitude;
+
+    const ctx = this.altitudeContext;
+    const { width, height } = ctx.canvas;
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = 'rgba(2, 3, 12, 0.9)';
+    ctx.fillRect(4, 4, width - 8, height - 8);
+    ctx.strokeStyle = '#29f3ff';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(4, 4, width - 8, height - 8);
+    ctx.font = '700 58px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#29f3ff';
+    ctx.shadowBlur = 12;
+    ctx.fillText(`ALT ${altitude}M`, width / 2, height / 2 + 3);
+    this.altitudeTexture.needsUpdate = true;
   }
 }
 
@@ -294,24 +355,28 @@ function drawBeaconTexture(): CanvasTexture {
   const finishPoint = route[route.length - 1];
   const gateX = finishPoint[0] - 27;
   const gateY = finishPoint[1] - 46;
+  const gateWidth = 126;
+  const gateBottom = mountainBase;
   ctx.strokeStyle = '#54ff7a';
   ctx.lineWidth = 11;
   ctx.shadowColor = '#54ff7a';
   ctx.shadowBlur = 20;
   ctx.beginPath();
-  ctx.moveTo(gateX, gateY + 108);
+  ctx.moveTo(gateX, gateBottom);
   ctx.lineTo(gateX, gateY);
-  ctx.lineTo(gateX + 126, gateY);
-  ctx.lineTo(gateX + 126, gateY + 108);
+  ctx.lineTo(gateX + gateWidth, gateY);
+  ctx.lineTo(gateX + gateWidth, gateBottom);
   ctx.stroke();
   for (let i = 0; i < 8; i++) {
     ctx.fillStyle = i % 2 ? '#05050d' : '#e8ecff';
-    ctx.fillRect(gateX + i * 15.75, gateY - 5, 15.75, 16);
+    ctx.fillRect(gateX + i * (gateWidth / 8), gateY - 5, gateWidth / 8, 16);
   }
   ctx.shadowBlur = 10;
   ctx.font = '700 25px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillStyle = '#54ff7a';
-  ctx.fillText('FINISH', gateX + 13, gateY + 68);
+  ctx.fillText('FINISH', gateX + gateWidth / 2, gateY + (gateBottom - gateY) / 2);
 
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;

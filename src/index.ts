@@ -120,20 +120,13 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     .addComponent(Interactable);
   startPanel.object3D!.position.set(0, -9999, -1.9);
 
-  const hudPanel = world
-    .createTransformEntity(undefined, world.playerEntity)
-    .addComponent(PanelUI, { config: './ui/hud.json', maxWidth: 1.1, maxHeight: 0.7 });
-  hudPanel.object3D!.position.set(0, 2.45, -3.6);
-  hudPanel.object3D!.rotation.x = 0.14;
-  hudPanel.object3D!.visible = false;
-
-  // The end panel stays live from boot (visibility-toggling a panel can
-  // leave its ray interaction stale) — it parks far below until needed.
+  // Begin in-frustum behind the opaque loader so UIKit prepares its glyph
+  // meshes before an early first-run failure; GameSystem parks it afterward.
   const endPanel = world
     .createTransformEntity(undefined, world.playerEntity)
     .addComponent(PanelUI, { config: './ui/end.json', maxWidth: 1.3, maxHeight: 1.1 })
     .addComponent(Interactable);
-  endPanel.object3D!.position.set(0, -9999, -1.8);
+  endPanel.object3D!.position.set(0, 1.45, -1.8);
 
   const warnPanel = world
     .createTransformEntity(undefined, world.playerEntity)
@@ -152,7 +145,6 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
 
   world.globals.panels = {
     start: startPanel,
-    hud: hudPanel,
     end: endPanel,
     warn: warnPanel,
     name: namePanel
