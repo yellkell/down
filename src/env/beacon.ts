@@ -37,6 +37,9 @@ export class SignBoard {
   private readonly arrowGlowMaterial: MeshBasicMaterial;
   private readonly altitudeContext: CanvasRenderingContext2D;
   private readonly altitudeTexture: CanvasTexture;
+  private readonly countdownContext: CanvasRenderingContext2D;
+  private readonly countdownTexture: CanvasTexture;
+  private readonly countdownPlate: Mesh;
   private readonly scanLine: Mesh;
   private readonly scanMaterial: MeshBasicMaterial;
   private altitudeValue = -1;
@@ -74,13 +77,16 @@ export class SignBoard {
     });
 
     const arrowShape = new Shape();
-    arrowShape.moveTo(-0.34, 0.055);
-    arrowShape.lineTo(0.045, 0.055);
-    arrowShape.lineTo(0.045, 0.15);
-    arrowShape.lineTo(0.36, 0);
-    arrowShape.lineTo(0.045, -0.15);
-    arrowShape.lineTo(0.045, -0.055);
-    arrowShape.lineTo(-0.34, -0.055);
+    // Tip is local origin. That lets the group sit on the exact route point
+    // while the arrow extends up-right and points down-left at the player.
+    // Pulsing around this origin cannot pull the tip away from its target.
+    arrowShape.moveTo(-0.7, 0.055);
+    arrowShape.lineTo(-0.315, 0.055);
+    arrowShape.lineTo(-0.315, 0.15);
+    arrowShape.lineTo(0, 0);
+    arrowShape.lineTo(-0.315, -0.15);
+    arrowShape.lineTo(-0.315, -0.055);
+    arrowShape.lineTo(-0.7, -0.055);
     arrowShape.closePath();
     const arrowGeometry = new ShapeGeometry(arrowShape);
     const arrowCore = new Mesh(arrowGeometry, this.arrowMaterial);
@@ -107,7 +113,7 @@ export class SignBoard {
     this.group.add(this.arrow);
 
     const altitudeCanvas = document.createElement('canvas');
-    altitudeCanvas.width = 768;
+    altitudeCanvas.width = 576;
     altitudeCanvas.height = 128;
     this.altitudeContext = altitudeCanvas.getContext('2d')!;
     this.altitudeTexture = new CanvasTexture(altitudeCanvas);
@@ -119,7 +125,7 @@ export class SignBoard {
     this.altitudeTexture.minFilter = LinearFilter;
     this.altitudeTexture.magFilter = LinearFilter;
     const altitudePlate = new Mesh(
-      new PlaneGeometry(2.8, 0.46),
+      new PlaneGeometry(2.1, 0.46),
       new MeshBasicMaterial({
         map: this.altitudeTexture,
         transparent: true,
@@ -128,11 +134,39 @@ export class SignBoard {
         side: DoubleSide
       })
     );
-    altitudePlate.position.set(1.55, 1.78, 0.1);
+    altitudePlate.position.set(1.78, 1.78, 0.1);
     altitudePlate.renderOrder = 35;
     altitudePlate.frustumCulled = false;
     this.group.add(altitudePlate);
-    this.drawAltitude(0, null, 1);
+    this.drawAltitude(0, 1);
+
+    // Countdown has its own tiny texture. Hiding it at slide launch changes
+    // only mesh visibility; it no longer forces the altitude canvas to redraw
+    // and upload on the busiest frame of the transition.
+    const countdownCanvas = document.createElement('canvas');
+    countdownCanvas.width = 192;
+    countdownCanvas.height = 128;
+    this.countdownContext = countdownCanvas.getContext('2d')!;
+    this.countdownTexture = new CanvasTexture(countdownCanvas);
+    this.countdownTexture.colorSpace = SRGBColorSpace;
+    this.countdownTexture.generateMipmaps = false;
+    this.countdownTexture.minFilter = LinearFilter;
+    this.countdownTexture.magFilter = LinearFilter;
+    this.countdownPlate = new Mesh(
+      new PlaneGeometry(0.7, 0.46),
+      new MeshBasicMaterial({
+        map: this.countdownTexture,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        side: DoubleSide
+      })
+    );
+    this.countdownPlate.position.set(0.42, 1.78, 0.1);
+    this.countdownPlate.renderOrder = 35;
+    this.countdownPlate.frustumCulled = false;
+    this.countdownPlate.visible = false;
+    this.group.add(this.countdownPlate);
 
     this.scanMaterial = new MeshBasicMaterial({
       map: drawScanTexture(),
@@ -197,7 +231,8 @@ export class SignBoard {
             : NEON.magenta;
     this.arrowMaterial.color.setHex(routeColor);
     this.arrowGlowMaterial.color.setHex(routeColor);
-    this.drawAltitude(altitudeMeters, countdown, mode === 'drop' ? 5 : 1);
+    this.drawAltitude(altitudeMeters, mode === 'drop' ? 10 : 1);
+    this.drawCountdown(countdown);
 
     this.milestonePulse = Math.max(0, this.milestonePulse - dt * 1.3);
     const pulse = 1 + this.milestonePulse * 0.28 + Math.sin(this.time * 6) * 0.025;
@@ -215,31 +250,25 @@ export class SignBoard {
     const t = progress - i;
     const a = ROUTE[i];
     const b = ROUTE[i + 1];
-    const dx = b[0] - a[0];
-    const dy = b[1] - a[1];
-    const segmentLength = Math.hypot(dx, dy);
-    const sideOffset = 0.18;
-    this.arrow.position.x = a[0] + dx * t - (dy / segmentLength) * sideOffset;
-    this.arrow.position.y = a[1] + dy * t + (dx / segmentLength) * sideOffset;
-    this.arrow.rotation.z = Math.atan2(dy, dx);
+    this.arrow.position.x = a[0] + (b[0] - a[0]) * t;
+    this.arrow.position.y = a[1] + (b[1] - a[1]) * t;
+    this.arrow.rotation.z = Math.atan2(-0.72, -0.68);
   }
 
   private drawAltitude(
     altitudeMeters: number,
-    countdown: number | null,
     altitudeStep: number
   ): void {
     // During a drop this is a GPU texture upload, not just a text change.
-    // Five-metre steps remain easy to read at slide speed while reducing the
-    // update cadence to roughly once per second; stationary/grid altitude
+    // Ten-metre steps remain easy to read at slide speed while reducing the
+    // update cadence to well under once per second; stationary/grid altitude
     // retains one-metre precision.
     const altitude = Math.max(
       0,
       Math.round(altitudeMeters / altitudeStep) * altitudeStep
     );
-    if (altitude === this.altitudeValue && countdown === this.countdownValue) return;
+    if (altitude === this.altitudeValue) return;
     this.altitudeValue = altitude;
-    this.countdownValue = countdown;
 
     const ctx = this.altitudeContext;
     const { width, height } = ctx.canvas;
@@ -252,16 +281,30 @@ export class SignBoard {
     ctx.shadowBlur = 15;
     ctx.fillText(`ALT ${altitude}M`, width - 36, height / 2 + 3);
 
-    if (countdown !== null) {
-      // Near-full height of the strip — at 74px the 3-2-1 was a sliver.
-      ctx.font = '800 112px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#ffb347';
-      ctx.shadowColor = '#ff6a2f';
-      ctx.shadowBlur = 26;
-      ctx.fillText(String(countdown), 84, height / 2 + 2);
-    }
     this.altitudeTexture.needsUpdate = true;
+  }
+
+  private drawCountdown(countdown: number | null): void {
+    if (countdown === this.countdownValue) return;
+    this.countdownValue = countdown;
+
+    if (countdown === null) {
+      this.countdownPlate.visible = false;
+      return;
+    }
+
+    const ctx = this.countdownContext;
+    const { width, height } = ctx.canvas;
+    ctx.clearRect(0, 0, width, height);
+    ctx.textBaseline = 'middle';
+    ctx.font = '800 112px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffb347';
+    ctx.shadowColor = '#ff6a2f';
+    ctx.shadowBlur = 26;
+    ctx.fillText(String(countdown), width / 2, height / 2 + 2);
+    this.countdownTexture.needsUpdate = true;
+    this.countdownPlate.visible = true;
   }
 }
 
