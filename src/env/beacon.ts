@@ -18,13 +18,13 @@ const BEACON_W = 6.4;
 const BEACON_H = 4.35;
 
 const ROUTE: ReadonlyArray<readonly [number, number]> = [
-  [-2.7, 0.78],
-  [-2.28, 1.1],
-  [-1.45, 0.02],
-  [-1.05, 0.32],
-  [0.05, -0.68],
-  [0.48, -0.38],
-  [2.05, -1.18]
+  [-2.82, 0.28],
+  [-2.52, 0.76],
+  [-0.68, -0.9],
+  [-0.18, -0.44],
+  [1.18, -1.46],
+  [1.76, -1.05],
+  [2.55, -1.7]
 ];
 
 type RouteMode = 'idle' | 'climb' | 'drop' | 'finish';
@@ -305,8 +305,9 @@ export class SignBoard {
     const pointsDownLeft = this.mode === 'drop' || this.mode === 'finish';
     this.arrow.position.set(targetX, targetY, 0.12);
     this.arrow.rotation.z = Math.atan2(-0.72, pointsDownLeft ? -0.68 : 0.68);
+    const labelX = targetX + (pointsDownLeft ? 0.62 : -0.62);
     this.youLabel.position.set(
-      targetX + (pointsDownLeft ? 0.62 : -0.62),
+      Math.min(BEACON_W / 2 - 0.45, Math.max(-BEACON_W / 2 + 0.45, labelX)),
       targetY + 0.67,
       0.13
     );
@@ -389,110 +390,63 @@ function drawBeaconTexture(): CanvasTexture {
     ctx.stroke();
   }
 
+  const toCanvas = ([x, y]: readonly [number, number]): [number, number] => [
+    canvas.width / 2 + (x / BEACON_W) * canvas.width,
+    canvas.height / 2 - (y / BEACON_H) * canvas.height
+  ];
+  const route = ROUTE.map(toCanvas);
+  const mountainBase = canvas.height - 18;
+  drawBoardFrame(ctx, canvas.width, canvas.height);
+  drawFinishGate(ctx, route[route.length - 1], mountainBase);
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+
+  // Bake the generated transparent artwork into this already-opaque canvas.
+  // The board remains a single depth-writing draw call on Quest instead of
+  // adding another large transparent layer that could revive slide flicker.
+  const mountain = new Image();
+  mountain.onload = () => {
+    ctx.drawImage(mountain, 0, 0, canvas.width, canvas.height);
+    drawBoardFrame(ctx, canvas.width, canvas.height);
+    drawFinishGate(ctx, route[route.length - 1], mountainBase);
+    texture.needsUpdate = true;
+  };
+  mountain.src = './images/mountain-route-v2.png';
+
+  return texture;
+}
+
+function drawBoardFrame(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number
+): void {
+  ctx.save();
   ctx.lineWidth = 8;
   ctx.strokeStyle = '#29f3ff';
   ctx.shadowColor = '#29f3ff';
   ctx.shadowBlur = 22;
-  ctx.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
+  ctx.strokeRect(18, 18, width - 36, height - 36);
   ctx.strokeStyle = '#ff3df2';
   ctx.beginPath();
   ctx.moveTo(18, 170);
   ctx.lineTo(18, 18);
   ctx.lineTo(310, 18);
   ctx.stroke();
+  ctx.restore();
+}
 
-  const toCanvas = ([x, y]: readonly [number, number]): [number, number] => [
-    canvas.width / 2 + (x / BEACON_W) * canvas.width,
-    canvas.height / 2 - (y / BEACON_H) * canvas.height
-  ];
-  const route = ROUTE.map(toCanvas);
-
-  // One descending ridge rather than three equal mountains. Each block is a
-  // short shoulder-to-peak climb; every slide is a much longer plunge.
-  const mountainBase = canvas.height - 18;
-  const mountainFill = ctx.createLinearGradient(0, 150, 0, mountainBase);
-  mountainFill.addColorStop(0, 'rgba(23, 125, 145, 0.52)');
-  mountainFill.addColorStop(0.48, 'rgba(80, 26, 112, 0.42)');
-  mountainFill.addColorStop(1, 'rgba(8, 8, 30, 0.12)');
-  const mountainLeft = 18;
-  ctx.beginPath();
-  ctx.moveTo(mountainLeft, route[0][1] + 42);
-  route.forEach(([x, y]) => ctx.lineTo(x, y));
-  ctx.lineTo(route[route.length - 1][0], mountainBase);
-  ctx.lineTo(mountainLeft, mountainBase);
-  ctx.closePath();
-  ctx.fillStyle = mountainFill;
-  ctx.fill();
-
-  // Broad, uneven facets keep the silhouette mountainous without turning
-  // each gameplay phrase into a symmetrical triangle.
-  const facetColors = [
-    'rgba(41, 243, 255, 0.16)',
-    'rgba(255, 61, 242, 0.14)',
-    'rgba(138, 43, 255, 0.18)'
-  ];
-  for (let i = 0; i < 3; i++) {
-    const shoulder = route[i * 2];
-    const peak = route[i * 2 + 1];
-    const landing = route[i * 2 + 2];
-    const anchorX = peak[0] + (landing[0] - peak[0]) * 0.42;
-    const anchorY = Math.min(mountainBase, landing[1] + 142 + i * 18);
-
-    ctx.beginPath();
-    ctx.moveTo(shoulder[0], shoulder[1]);
-    ctx.lineTo(peak[0], peak[1]);
-    ctx.lineTo(anchorX, anchorY);
-    ctx.lineTo(landing[0], landing[1]);
-    ctx.closePath();
-    ctx.fillStyle = facetColors[i];
-    ctx.fill();
-
-    // The illuminated seam is a single deliberate cut from summit to base.
-    // Following the inner facet anchor gave the middle magenta seam a kink.
-    ctx.beginPath();
-    ctx.moveTo(peak[0], peak[1]);
-    ctx.lineTo(landing[0] - 18, mountainBase);
-    ctx.strokeStyle = i === 0 ? '#29f3ff' : i === 1 ? '#ff3df2' : '#8a2bff';
-    ctx.globalAlpha = 0.36;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
-
-  // Route legs alternate deliberately: slow cyan climb during each block
-  // section, sharp amber plunge when the soundtrack releases into a slide.
-  for (let i = 0; i < route.length - 1; i++) {
-    const climb = i % 2 === 0;
-    ctx.beginPath();
-    ctx.moveTo(route[i][0], route[i][1]);
-    ctx.lineTo(route[i + 1][0], route[i + 1][1]);
-    ctx.strokeStyle = climb ? '#29f3ff' : '#ffb347';
-    ctx.lineWidth = climb ? 9 : 7;
-    ctx.setLineDash(climb ? [] : [15, 10]);
-    ctx.shadowColor = climb ? '#29f3ff' : '#ff6a2f';
-    ctx.shadowBlur = 22;
-    ctx.stroke();
-  }
-  ctx.setLineDash([]);
-
-  route.forEach(([x, y], i) => {
-    // The finish gate is the final marker; another green node here would sit
-    // directly over its label and make FINISH harder to read.
-    if (i === route.length - 1) return;
-    const peak = i % 2 === 1;
-    ctx.fillStyle = peak ? '#ff3df2' : '#ffb347';
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(Math.PI / 4);
-    ctx.fillRect(-8, -8, 16, 16);
-    ctx.restore();
-  });
-
-  const finishPoint = route[route.length - 1];
+function drawFinishGate(
+  ctx: CanvasRenderingContext2D,
+  finishPoint: readonly [number, number],
+  gateBottom: number
+): void {
   const gateX = finishPoint[0] - 27;
   const gateY = finishPoint[1] - 46;
   const gateWidth = 126;
-  const gateBottom = mountainBase;
+
+  ctx.save();
   ctx.strokeStyle = '#54ff7a';
   ctx.lineWidth = 11;
   ctx.shadowColor = '#54ff7a';
@@ -513,8 +467,5 @@ function drawBeaconTexture(): CanvasTexture {
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#54ff7a';
   ctx.fillText('FINISH', gateX + gateWidth / 2, gateY + (gateBottom - gateY) / 2);
-
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  return texture;
+  ctx.restore();
 }
