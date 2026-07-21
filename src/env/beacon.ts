@@ -282,7 +282,7 @@ export class SignBoard {
             : NEON.magenta;
     this.arrowMaterial.color.setHex(routeColor);
     this.arrowGlowMaterial.color.setHex(routeColor);
-    this.drawAltitude(altitudeMeters, mode === 'drop' ? 10 : 1);
+    this.drawAltitude(altitudeMeters, mode === 'drop' ? 2 : 1);
     this.drawCountdown(countdown);
 
     this.milestonePulse = Math.max(0, this.milestonePulse - dt * 1.3);
@@ -314,9 +314,9 @@ export class SignBoard {
     altitudeStep: number
   ): void {
     // During a drop this is a GPU texture upload, not just a text change.
-    // Ten-metre steps remain easy to read at slide speed while reducing the
-    // update cadence to well under once per second; stationary/grid altitude
-    // retains one-metre precision.
+    // Two-metre steps give the descent a smooth rolling readout while still
+    // halving the upload rate; stationary/grid altitude retains one-metre
+    // precision.
     const altitude = Math.max(
       0,
       Math.round(altitudeMeters / altitudeStep) * altitudeStep
