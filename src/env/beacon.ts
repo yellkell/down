@@ -129,7 +129,7 @@ export class SignBoard {
     youTexture.minFilter = LinearFilter;
     youTexture.magFilter = LinearFilter;
     this.youLabel = new Mesh(
-      new PlaneGeometry(0.72, 0.27),
+      new PlaneGeometry(0.96, 0.36),
       new MeshBasicMaterial({
         map: youTexture,
         transparent: true,
@@ -302,10 +302,10 @@ export class SignBoard {
     const pointsDownLeft = this.mode === 'drop' || this.mode === 'finish';
     this.arrow.position.set(targetX, targetY, 0.12);
     this.arrow.rotation.z = Math.atan2(-0.72, pointsDownLeft ? -0.68 : 0.68);
-    const labelX = targetX + (pointsDownLeft ? 0.62 : -0.62);
+    const labelX = targetX + (pointsDownLeft ? 0.72 : -0.72);
     this.youLabel.position.set(
-      Math.min(BEACON_W / 2 - 0.45, Math.max(-BEACON_W / 2 + 0.45, labelX)),
-      targetY + 0.67,
+      labelX,
+      targetY + 0.72,
       0.13
     );
   }
