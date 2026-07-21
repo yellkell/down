@@ -116,7 +116,7 @@ export class SignBoard {
         side: DoubleSide
       })
     );
-    altitudePlate.position.set(1.7, 1.78, 0.1);
+    altitudePlate.position.set(1.55, 1.78, 0.1);
     altitudePlate.renderOrder = 35;
     altitudePlate.frustumCulled = false;
     this.group.add(altitudePlate);
@@ -227,7 +227,7 @@ export class SignBoard {
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = '#29f3ff';
     ctx.shadowBlur = 15;
-    ctx.fillText(`ALT ${altitude}M`, width - 12, height / 2 + 3);
+    ctx.fillText(`ALT ${altitude}M`, width - 36, height / 2 + 3);
 
     if (countdown !== null) {
       ctx.font = '800 74px monospace';
