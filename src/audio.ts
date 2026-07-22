@@ -49,7 +49,12 @@ export const MUSIC_TRACKS: readonly MusicTrack[] = [
   { id: 'original', label: 'ORIGINAL', src: './audio/run.m4a', synchronized: true },
   { id: 'chase', label: 'CHASE', src: './audio/chase.mp3', synchronized: false },
   { id: 'sakupened', label: 'SAKUPENED', src: './audio/sakupened.mp3', synchronized: false },
-  { id: 'fusion', label: 'FUSION', src: './audio/fusion.mp3', synchronized: false },
+  {
+    id: 'fusion',
+    label: 'FUTURE VIBE',
+    src: './audio/fusion.mp3',
+    synchronized: false
+  },
   {
     id: 'give-it-to-me',
     label: 'GIVE IT TO ME',
@@ -100,7 +105,7 @@ class AudioManager {
     this.music.volume = this.baseMusicVolume();
   }
 
-  /** Sakupened and Fusion were supplied as hotter MP3 masters. The original
+  /** Sakupened and Future Vibe were supplied as hotter MP3 masters. The original
    * track and the two M4A-sourced bonus tracks keep the full music level. */
   private baseMusicVolume(): number {
     return this.musicId === 'sakupened' || this.musicId === 'fusion' ? 0.38 : 0.6;
