@@ -110,6 +110,9 @@ export class GameSystem extends createSystem({
   private warnTimer = 0;
   private beepAt = 0;
   private started = false;
+  /** Prevent the RETURN TO TOP release from clicking LET'S GO behind it. */
+  private lobbyArmed = true;
+  private lobbyArmTimer: number | null = null;
   private musicStartTimer: number | null = null;
   private lookDownTimer: number | null = null;
   /** Settle hold on a fresh platform before the blocks start rising. */
@@ -203,10 +206,7 @@ export class GameSystem extends createSystem({
       const doc = this.getDocument(entity);
       if (!doc) return;
       const beginBtn = doc.getElementById('begin-btn') as UIKit.Text;
-      beginBtn?.addEventListener('click', () => {
-        audio.blip(1250);
-        this.startGame();
-      });
+      beginBtn?.addEventListener('click', () => this.startGame());
 
       this.songSelector = doc.getElementById('song-selector') as UIKit.Container;
       this.songOptions = doc.getElementById('song-options') as UIKit.Container;
@@ -497,7 +497,8 @@ export class GameSystem extends createSystem({
   }
 
   private startGame(): void {
-    if (this.started) return;
+    if (this.started || !this.lobbyArmed) return;
+    audio.blip(1250);
     this.started = true;
     this.setStartPanelShown(false);
     this.startRunAudio();
@@ -542,6 +543,12 @@ export class GameSystem extends createSystem({
     this.creditsOpen = false;
     this.applySongMenu();
     this.started = false;
+    this.lobbyArmed = false;
+    if (this.lobbyArmTimer !== null) window.clearTimeout(this.lobbyArmTimer);
+    this.lobbyArmTimer = window.setTimeout(() => {
+      this.lobbyArmed = true;
+      this.lobbyArmTimer = null;
+    }, 450);
     audio.stopAll();
     if (this.musicStartTimer !== null) {
       window.clearTimeout(this.musicStartTimer);
