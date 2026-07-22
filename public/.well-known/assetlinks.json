@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.yellkell.down",
+      "sha256_cert_fingerprints": [
+        "0D:5E:5B:29:E2:AE:27:8A:B4:18:0E:D1:3E:0B:A5:2F:BD:1E:38:05:7A:D4:2E:D9:6D:44:FF:38:45:A7:F3:CC"
+      ]
+    }
+  }
+]
