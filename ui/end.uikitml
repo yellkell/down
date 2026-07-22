@@ -26,7 +26,8 @@
     color: #bdffd0;
     text-align: center;
   }
-  #retry-btn {
+  #retry-btn,
+  #return-top-btn {
     width: 92%;
     padding: 2.2;
     margin-top: 2.2;
@@ -41,14 +42,24 @@
     text-align: center;
     cursor: pointer;
   }
-  #retry-btn:hover {
+  #retry-btn:hover,
+  #return-top-btn:hover {
     background-color: #ffffff;
     border-color: #54ff7a;
     border-width: 0.18;
+  }
+  #return-top-btn {
+    display: none;
+    margin-top: 1.1;
+    background-color: #12301f;
+    color: #bdffd0;
+    border-color: #54ff7a;
+    font-size: 2.35;
   }
 </style>
 <div class="panel">
   <span id="end-title">GAME OVER</span>
   <span id="end-stats">ROUND 1/3</span>
   <button id="retry-btn">GO AGAIN</button>
+  <button id="return-top-btn">RETURN TO TOP</button>
 </div>

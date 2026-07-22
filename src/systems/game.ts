@@ -99,6 +99,7 @@ export class GameSystem extends createSystem({
   private endTitle: UIKit.Text | null = null;
   private endStats: UIKit.Text | null = null;
   private endAction: UIKit.Text | null = null;
+  private returnTopAction: UIKit.Text | null = null;
   private nameDisplay: UIKit.Text | null = null;
   private songSelector: UIKit.Container | null = null;
   private songOptions: UIKit.Container | null = null;
@@ -269,10 +270,15 @@ export class GameSystem extends createSystem({
       this.endTitle = doc.getElementById('end-title') as UIKit.Text;
       this.endStats = doc.getElementById('end-stats') as UIKit.Text;
       this.endAction = doc.getElementById('retry-btn') as UIKit.Text;
+      this.returnTopAction = doc.getElementById('return-top-btn') as UIKit.Text;
       this.applyEndContent();
       this.endAction?.addEventListener('click', () => {
         audio.blip(1250);
         this.handleEndAction();
+      });
+      this.returnTopAction?.addEventListener('click', () => {
+        audio.blip(1050);
+        this.returnToTop();
       });
       // The first result can arrive while UIKit is still constructing this
       // document. Reapply placement once its meshes actually exist, rather
@@ -373,6 +379,9 @@ export class GameSystem extends createSystem({
     this.endTitle?.setProperties({ text: this.endTitleValue });
     this.endStats?.setProperties({ text: this.endStatsValue });
     this.endAction?.setProperties({ text: this.endActionValue });
+    this.returnTopAction?.setProperties({
+      display: game.phase === 'GAME_OVER' && this.songsUnlocked ? 'flex' : 'none'
+    });
   }
 
   /** Same park-below trick for the in-VR start lobby. */
