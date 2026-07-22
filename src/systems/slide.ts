@@ -281,6 +281,7 @@ export class SlideSystem extends createSystem({}) {
       hoop.passed = true;
       game.hoopColor = hoop.color;
       game.hoopPulse = 1;
+      game.hoopFlash = 1;
     }
   }
 

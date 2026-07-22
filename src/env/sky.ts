@@ -22,6 +22,8 @@ export interface SkyHandles {
   uniforms: {
     uTime: { value: number };
     uDepthLight: { value: number };
+    uHoopPulse: { value: number };
+    uHoopColor: { value: Color };
   };
 }
 
@@ -34,12 +36,14 @@ export function createSky(): SkyHandles {
   const group = new Group();
   const uTime = { value: 0 };
   const uDepthLight = { value: 0 };
+  const uHoopPulse = { value: 0 };
+  const uHoopColor = { value: new Color(NEON.cyan) };
 
   // --- Nebula dome ------------------------------------------------------
   const nebulaMaterial = new ShaderMaterial({
     side: BackSide,
     depthWrite: false,
-    uniforms: { uTime, uDepthLight },
+    uniforms: { uTime, uDepthLight, uHoopPulse, uHoopColor },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() {
@@ -51,6 +55,8 @@ export function createSky(): SkyHandles {
       varying vec3 vDir;
       uniform float uTime;
       uniform float uDepthLight;
+      uniform float uHoopPulse;
+      uniform vec3 uHoopColor;
       ${NOISE_GLSL}
       void main() {
         vec3 d = normalize(vDir);
@@ -81,6 +87,10 @@ export function createSky(): SkyHandles {
         // The finish grows lighter through the world itself, never through a
         // camera-facing overlay. Looking up or down cannot change its strength.
         col += vec3(0.055, 0.070, 0.110) * uDepthLight;
+
+        // The visor supplies the crisp laser-barrier hit; this broader tint
+        // hangs behind it as the hoop's energy wake through the atmosphere.
+        col += uHoopColor * uHoopPulse * 0.120;
 
         gl_FragColor = vec4(col, 1.0);
       }
@@ -254,6 +264,6 @@ export function createSky(): SkyHandles {
 
   return {
     group,
-    uniforms: { uTime, uDepthLight }
+    uniforms: { uTime, uDepthLight, uHoopPulse, uHoopColor }
   };
 }

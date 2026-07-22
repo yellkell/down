@@ -45,6 +45,7 @@ export class EnvironmentSystem extends createSystem({}) {
   private fogBase = new Color(0x050510);
   private fogFinish = new Color(0x15172d);
   private fogColor = new Color();
+  private hoopColor = new Color(0x29f3ff);
   private riserY = -12;
   private finishWarmupFrames = 3;
   /** First seconds of boot: force-render normally-hidden materials (the
@@ -101,17 +102,32 @@ export class EnvironmentSystem extends createSystem({}) {
     // no head-locked gradient edge to reveal when the headset tilts.
     const flash = env.hoopFlash.uniforms;
     flash.uColor.value.setHex(game.hoopColor);
-    flash.uStrength.value = game.hoopPulse * 0.115;
-    if (game.hoopPulse > 0) {
-      game.hoopPulse = Math.max(0, game.hoopPulse - delta / 0.22);
+    flash.uStrength.value = game.hoopFlash * 0.115;
+    if (game.hoopFlash > 0) {
+      game.hoopFlash = Math.max(0, game.hoopFlash - delta / 0.22);
     }
 
-    // Brighten fogged world geometry at the finish along with the sky.
+    // The slower sky/fog tail makes the colour feel as though it has washed
+    // into the world after the initial laser-sheet contact.
+    if (game.hoopPulse > 0) {
+      game.hoopPulse = Math.max(0, game.hoopPulse - delta / 0.9);
+    }
+    skyFx.uHoopPulse.value +=
+      (game.hoopPulse - skyFx.uHoopPulse.value) * Math.min(1, delta * 7);
+    skyFx.uHoopColor.value.setHex(game.hoopColor);
+
+    // Brighten fogged world geometry at the finish and carry a trace of the
+    // hoop's lingering colour into it.
     if (this.scene.fog) {
       this.fogColor.lerpColors(
         this.fogBase,
         this.fogFinish,
         skyFx.uDepthLight.value
+      );
+      this.hoopColor.setHex(game.hoopColor);
+      this.fogColor.lerp(
+        this.hoopColor,
+        skyFx.uHoopPulse.value * 0.1
       );
       this.scene.fog.color.copy(this.fogColor);
     }

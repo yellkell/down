@@ -26,8 +26,10 @@ export const game = {
   roundRemaining: 999,
   /** Current slide speed in m/s, drives the wind streaks. */
   slideSpeed: 0,
-  /** Brief visor tint fired as the player crosses a slide hoop. */
+  /** Eased atmospheric tail fired as the player crosses a slide hoop. */
   hoopPulse: 0,
+  /** Fast edgeless visor flash at the front of the atmospheric tail. */
+  hoopFlash: 0,
   hoopColor: 0x29f3ff
 };
 
@@ -64,5 +66,6 @@ export function resetGameState(): void {
   game.roundRemaining = 999;
   game.slideSpeed = 0;
   game.hoopPulse = 0;
+  game.hoopFlash = 0;
   game.hoopColor = 0x29f3ff;
 }
