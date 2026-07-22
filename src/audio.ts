@@ -100,10 +100,10 @@ class AudioManager {
     this.music.volume = this.baseMusicVolume();
   }
 
-  /** The supplied MP3 masters are hotter than Run, so only those four bonus
-   * tracks use a quieter fixed baseline. Voice cues never alter music gain. */
+  /** Sakupened and Fusion were supplied as hotter MP3 masters. The original
+   * track and the two M4A-sourced bonus tracks keep the full music level. */
   private baseMusicVolume(): number {
-    return this.musicId === 'original' ? 0.6 : 0.38;
+    return this.musicId === 'sakupened' || this.musicId === 'fusion' ? 0.38 : 0.6;
   }
 
   /** Call from any real DOM gesture (the intro buttons) so the context is

@@ -501,7 +501,7 @@ export class GameSystem extends createSystem({
     this.startRunAudio();
     this.setPointersVisible(false);
     emit('game-start');
-    this.enterGrid(1.6);
+    this.enterGrid(2.9);
   }
 
   private retry(): void {
@@ -518,7 +518,7 @@ export class GameSystem extends createSystem({
     this.nameBuf = '';
     this.setPointersVisible(false);
     this.startRunAudio();
-    this.enterGrid(1.6);
+    this.enterGrid(2.9);
   }
 
   /** A completed run returns to the summit lobby so the newly unlocked
@@ -578,7 +578,7 @@ export class GameSystem extends createSystem({
     this.lookDownTimer = window.setTimeout(() => {
       audio.play('lookdown');
       this.lookDownTimer = null;
-    }, game.round === 1 ? 1100 : 1250);
+    }, game.round === 1 ? 1800 : 1250);
   }
 
   private enterSlide(): void {
