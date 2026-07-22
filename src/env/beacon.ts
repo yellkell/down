@@ -122,8 +122,8 @@ export class SignBoard {
     youContext.font = '900 68px monospace';
     youContext.textAlign = 'center';
     youContext.textBaseline = 'middle';
-    youContext.fillStyle = '#ffffff';
-    youContext.shadowColor = '#29f3ff';
+    youContext.fillStyle = '#54ff7a';
+    youContext.shadowColor = '#54ff7a';
     youContext.shadowBlur = 12;
     youContext.fillText('YOU', youCanvas.width / 2, youCanvas.height / 2 + 2);
     const youTexture = new CanvasTexture(youCanvas);
