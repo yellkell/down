@@ -429,6 +429,7 @@ function drawFinishGate(
   const gateX = finishPoint[0] - 27;
   const gateY = finishPoint[1] - 46;
   const gateWidth = 126;
+  const legBottom = gateBottom - 16;
 
   ctx.save();
   ctx.strokeStyle = '#54ff7a';
@@ -436,10 +437,10 @@ function drawFinishGate(
   ctx.shadowColor = '#54ff7a';
   ctx.shadowBlur = 20;
   ctx.beginPath();
-  ctx.moveTo(gateX, gateBottom);
+  ctx.moveTo(gateX, legBottom);
   ctx.lineTo(gateX, gateY);
   ctx.lineTo(gateX + gateWidth, gateY);
-  ctx.lineTo(gateX + gateWidth, gateBottom);
+  ctx.lineTo(gateX + gateWidth, legBottom);
   ctx.stroke();
   for (let i = 0; i < 8; i++) {
     ctx.fillStyle = i % 2 ? '#05050d' : '#e8ecff';
@@ -450,6 +451,6 @@ function drawFinishGate(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#54ff7a';
-  ctx.fillText('FINISH', gateX + gateWidth / 2, gateY + (gateBottom - gateY) / 2);
+  ctx.fillText('FINISH', gateX + gateWidth / 2, gateY + (legBottom - gateY) / 2);
   ctx.restore();
 }
