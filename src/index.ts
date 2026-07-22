@@ -90,6 +90,15 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   finish.visible = false;
   scene.add(finish);
 
+  // Upload the finish debris geometry and shared materials before gameplay.
+  // This microscopic clone renders for three startup frames, then disappears;
+  // the real field can be visible for the whole final drop without pop-in.
+  const finishWarmup = finishZone.details.clone(true);
+  finishWarmup.scale.setScalar(0.001);
+  finishWarmup.position.set(0, PHASE_HEIGHTS[0] - 2, -2);
+  finishWarmup.traverse((node) => (node.frustumCulled = false));
+  scene.add(finishWarmup);
+
   // The graffiti wall: everyone who ever finished, sprayed around the pad.
   // Loads in the background — the field just starts empty if it can't.
   const graffiti = new GraffitiField();
@@ -114,7 +123,7 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     city,
     clouds,
     finish,
-    finishDetails: finishZone.details,
+    finishWarmup,
     graffiti
   } satisfies EnvHandles;
 

@@ -453,10 +453,8 @@ export class GameSystem extends createSystem({
 
     // The bottom of the world only materializes once you commit to it.
     if (game.isFinal && this.env) {
-      // Keep distant subpixel debris and hundreds of transparent graffiti
-      // textures out of the first final-slide frame. EnvironmentSystem
-      // reveals the opaque debris incrementally; graffiti returns at rest.
-      this.env.finishDetails.children.forEach((detail) => (detail.visible = false));
+      // Transparent graffiti waits until the rig is stationary. The opaque
+      // debris was warmed at boot, so it can be present for the whole drop.
       this.env.graffiti.hide();
       this.env.finish.visible = true;
     }
@@ -476,7 +474,6 @@ export class GameSystem extends createSystem({
 
   private onWin(): void {
     game.phase = 'WIN';
-    this.env?.finishDetails.children.forEach((detail) => (detail.visible = true));
     this.env?.graffiti.show();
     audio.play('welldone');
     this.env?.signs.show(3);

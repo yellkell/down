@@ -68,6 +68,7 @@ const BARRIER_GLOW_DISTANCE = 65;
 export class SlideSystem extends createSystem({}) {
   private active = false;
   private targetY = 0;
+  private targetZ = 0;
   private isFinal = false;
   private speed = 0;
   private elapsed = 0;
@@ -139,10 +140,11 @@ export class SlideSystem extends createSystem({}) {
     const start = this.player.position;
     const drop = start.y - this.targetY;
     const length = drop / Math.sin(SLIDE_ANGLE);
+    this.targetZ = start.z - Math.cos(SLIDE_ANGLE) * length;
 
     // Track ends right where the slide does — riding it should feel like
     // reaching the end, not stopping partway down a longer ribbon.
-    this.track = createSlideTrack(length + 4);
+    this.track = createSlideTrack(length);
     this.track.group.position.copy(start);
     this.scene.add(this.track.group);
 
@@ -306,8 +308,9 @@ export class SlideSystem extends createSystem({}) {
     this.player.position.y += dy;
     this.player.position.z += dz;
 
-    if (this.player.position.y <= this.targetY + 0.5) {
+    if (this.player.position.y <= this.targetY + 0.05) {
       this.player.position.y = this.targetY;
+      this.player.position.z = this.targetZ;
       this.active = false;
       game.slideSpeed = 0;
       this.clearCourse();
