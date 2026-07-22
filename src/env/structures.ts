@@ -318,9 +318,10 @@ export function createFinishZone(center: Vector3): FinishZoneHandles {
   padRing.position.y = 0.05;
   group.add(padRing);
 
-  const padGlow = makeGlow(NEON.lime, 10, 0.25);
-  padGlow.position.y = 0.4;
-  group.add(padGlow);
+  // Never put a broad billboard glow at the pad center. The player lands
+  // inside it, so the camera-facing plane crosses the stereo near clip as
+  // their head rises and falls, washing the entire Quest view in and out.
+  // The thin neon ring supplies the finish halo without enclosing the eyes.
 
   // Debris field of neon polyhedra.
   const geometries = [
