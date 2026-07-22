@@ -579,7 +579,7 @@ export class GameSystem extends createSystem({
       this.showWarning('LOOK DOWN', 2.0);
       audio.play('lookdown');
       this.lookDownTimer = null;
-    }, game.round === 1 ? 1800 : 1250);
+    }, game.round === 1 ? 1800 : 2400);
   }
 
   private enterSlide(): void {
@@ -620,7 +620,7 @@ export class GameSystem extends createSystem({
     audio.play(game.round === 1 ? 'nice' : 'perfect');
     game.arrival = 1; // deck shockwave — you've touched down
     game.round += 1;
-    this.enterGrid(2.0);
+    this.enterGrid(3.5);
   }
 
   private onWin(): void {
