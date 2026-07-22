@@ -103,6 +103,8 @@ export class GameSystem extends createSystem({
   private songSelector: UIKit.Container | null = null;
   private songOptions: UIKit.Container | null = null;
   private songToggle: UIKit.Text | null = null;
+  private creditsButton: UIKit.Text | null = null;
+  private creditsWindow: UIKit.Container | null = null;
 
   private warnTimer = 0;
   private beepAt = 0;
@@ -126,6 +128,7 @@ export class GameSystem extends createSystem({
   private songsUnlocked = hasUnlockedSongs();
   private selectedSong = readStoredSong();
   private songMenuOpen = false;
+  private creditsOpen = false;
 
   private get panels(): PanelEntities {
     return this.globals.panels as PanelEntities;
@@ -216,6 +219,7 @@ export class GameSystem extends createSystem({
       this.songToggle?.addEventListener('click', () => {
         audio.blip(1100);
         this.songMenuOpen = !this.songMenuOpen;
+        this.creditsOpen = false;
         this.applySongMenu();
       });
       MUSIC_TRACKS.forEach((track, index) => {
@@ -225,6 +229,22 @@ export class GameSystem extends createSystem({
           this.selectSong(track.id);
         });
       });
+      this.creditsButton = doc.getElementById('credits-btn') as UIKit.Text;
+      this.creditsWindow = doc.getElementById('credits-window') as UIKit.Container;
+      this.creditsButton?.addEventListener('click', () => {
+        audio.blip(1050);
+        this.songMenuOpen = false;
+        this.creditsOpen = true;
+        this.applySongMenu();
+      });
+      (doc.getElementById('credits-close') as UIKit.Text | null)?.addEventListener(
+        'click',
+        () => {
+          audio.blip(850);
+          this.creditsOpen = false;
+          this.applySongMenu();
+        }
+      );
       this.applySongMenu();
     });
   }
@@ -240,6 +260,10 @@ export class GameSystem extends createSystem({
   private applySongMenu(): void {
     this.songSelector?.setProperties({ display: this.songsUnlocked ? 'flex' : 'none' });
     this.songOptions?.setProperties({ display: this.songMenuOpen ? 'flex' : 'none' });
+    this.creditsButton?.setProperties({ display: this.songsUnlocked ? 'flex' : 'none' });
+    this.creditsWindow?.setProperties({
+      display: this.songsUnlocked && this.creditsOpen ? 'flex' : 'none'
+    });
     const track = MUSIC_TRACKS.find((candidate) => candidate.id === this.selectedSong);
     this.songToggle?.setProperties({ text: `${track?.label ?? 'ORIGINAL'}  ▾` });
   }
@@ -510,6 +534,7 @@ export class GameSystem extends createSystem({
     this.nameActive = false;
     this.nameBuf = '';
     this.songMenuOpen = false;
+    this.creditsOpen = false;
     this.applySongMenu();
     this.started = false;
     audio.stopAll();

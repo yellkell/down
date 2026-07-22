@@ -123,6 +123,74 @@
     color: #ffffff;
     border-color: #29f3ff;
   }
+  #credits-btn {
+    display: none;
+    width: 48%;
+    padding: 1.15;
+    margin-top: 1.1;
+    background-color: #0b1424;
+    color: #9cefff;
+    border-color: #246079;
+    border-width: 0.08;
+    border-radius: 0.3;
+    font-size: 1.55;
+    font-weight: bold;
+    letter-spacing: 0.42;
+    text-align: center;
+    cursor: pointer;
+  }
+  #credits-btn:hover {
+    background-color: #183753;
+    color: #ffffff;
+    border-color: #29f3ff;
+  }
+  #credits-window {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 94%;
+    padding: 1.8;
+    margin-top: 0.65;
+    background-color: #080b14;
+    border-color: #29f3ff;
+    border-width: 0.1;
+    border-radius: 0.35;
+  }
+  .credits-title {
+    font-size: 2.2;
+    font-weight: bold;
+    letter-spacing: 0.55;
+    color: #ffffff;
+    text-align: center;
+  }
+  .credit-line {
+    width: 100%;
+    margin-top: 0.9;
+    font-size: 1.45;
+    font-weight: bold;
+    letter-spacing: 0.18;
+    color: #c9faff;
+    text-align: center;
+  }
+  #credits-close {
+    width: 58%;
+    padding: 1.15;
+    margin-top: 1.4;
+    background-color: #163652;
+    color: #ffffff;
+    border-color: #29f3ff;
+    border-width: 0.08;
+    border-radius: 0.3;
+    font-size: 1.55;
+    font-weight: bold;
+    letter-spacing: 0.42;
+    text-align: center;
+    cursor: pointer;
+  }
+  #credits-close:hover {
+    background-color: #ffffff;
+    color: #02030a;
+  }
 </style>
 <div class="panel">
   <span class="title">READY TO GO?</span>
@@ -142,4 +210,12 @@
     </div>
   </div>
   <button id="begin-btn" class="begin-button">LET'S GO</button>
+  <button id="credits-btn">CREDITS</button>
+  <div id="credits-window">
+    <span class="credits-title">CREDITS</span>
+    <span class="credit-line">Created by yellkell</span>
+    <span class="credit-line">Music by IBWildcat1998 &amp; poopoodoodoo698</span>
+    <span class="credit-line">Voice Acting by v0ltaVA</span>
+    <button id="credits-close">CLOSE</button>
+  </div>
 </div>
