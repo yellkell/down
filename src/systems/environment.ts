@@ -27,6 +27,8 @@ export interface EnvHandles {
   clouds: CloudHandles;
   /** Hidden until the final drop begins. */
   finish: Group;
+  /** Decorative finish debris, revealed incrementally near the landing. */
+  finishDetails: Group;
   /** "X WAS HERE" marks sprayed through the finish zone. */
   graffiti: GraffitiField;
 }
@@ -37,7 +39,10 @@ export interface EnvHandles {
  */
 export class EnvironmentSystem extends createSystem({}) {
   private headWorld = new Vector3();
+  private finishWorld = new Vector3();
   private riserY = -12;
+  private finishDetailCursor = 0;
+  private finalRevealActive = false;
   /** First seconds of boot: force-render normally-hidden materials (the
    * streaks) at zero strength so their shaders compile before gameplay —
    * a mid-slide compile drops frames, which in VR reads as flicker. */
@@ -112,6 +117,28 @@ export class EnvironmentSystem extends createSystem({}) {
     if (this.warmTimer > 0) this.warmTimer -= delta;
     env.streaks.object.visible =
       streaks.uStrength.value > 0.02 || this.warmTimer > 0;
+
+    const finalSlide = game.phase === 'SLIDE' && game.isFinal;
+    if (finalSlide && !this.finalRevealActive) {
+      this.finalRevealActive = true;
+      this.finishDetailCursor = 0;
+    } else if (!finalSlide) {
+      this.finalRevealActive = false;
+    }
+    if (finalSlide) {
+      env.finish.getWorldPosition(this.finishWorld);
+      if (this.player.position.distanceTo(this.finishWorld) < 190) {
+        // Upload and reveal only two debris shapes per frame. Revealing all
+        // 46 at final-slide launch caused a Quest render spike and made the
+        // slide, obstacles, and UI appear to flicker together.
+        for (let i = 0; i < 2; i++) {
+          const detail = env.finishDetails.children[this.finishDetailCursor];
+          if (!detail) break;
+          detail.visible = true;
+          this.finishDetailCursor += 1;
+        }
+      }
+    }
 
     let routePosition: number | null = null;
     let routeMode: 'idle' | 'climb' | 'drop' | 'finish' = 'idle';

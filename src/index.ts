@@ -85,7 +85,8 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     slideRun(PHASE_HEIGHTS[1] + GRID_CLIMB_HEIGHT - PHASE_HEIGHTS[2]) +
     slideRun(PHASE_HEIGHTS[2] + GRID_CLIMB_HEIGHT - WINNER_HEIGHT)
   );
-  const finish = createFinishZone(new Vector3(0, WINNER_HEIGHT, finishZ));
+  const finishZone = createFinishZone(new Vector3(0, WINNER_HEIGHT, finishZ));
+  const finish = finishZone.group;
   finish.visible = false;
   scene.add(finish);
 
@@ -113,6 +114,7 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     city,
     clouds,
     finish,
+    finishDetails: finishZone.details,
     graffiti
   } satisfies EnvHandles;
 

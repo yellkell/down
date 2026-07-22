@@ -291,9 +291,16 @@ function makeWindowMaterial(uniforms: CityHandles['uniforms']): ShaderMaterial {
  * The finish zone: a landing pad, a portal arch of stacked rings, and the
  * debris field of every shape that was ever fired at you, drifting in glow.
  */
-export function createFinishZone(center: Vector3): Group {
+export interface FinishZoneHandles {
+  group: Group;
+  details: Group;
+}
+
+export function createFinishZone(center: Vector3): FinishZoneHandles {
   const group = new Group();
   group.position.copy(center);
+  const details = new Group();
+  group.add(details);
   const rng = mulberry32(99);
 
   // Landing pad ring.
@@ -322,6 +329,8 @@ export function createFinishZone(center: Vector3): Group {
     new DodecahedronGeometry(1),
     new IcosahedronGeometry(1)
   ];
+  const coreMaterial = new MeshBasicMaterial({ color: 0x000000 });
+  const wireMaterials = new Map<number, MeshBasicMaterial>();
   for (let i = 0; i < 46; i++) {
     const angle = (i / 46) * Math.PI * 2 + (rng() - 0.5);
     const radius = 17 + rng() * 26;
@@ -330,11 +339,22 @@ export function createFinishZone(center: Vector3): Group {
     const geometry = geometries[Math.floor(rng() * geometries.length)];
 
     const shape = new Group();
-    const core = new Mesh(geometry, new MeshBasicMaterial({ color: 0x000000 }));
+    const core = new Mesh(geometry, coreMaterial);
     core.scale.setScalar(scale * 0.92);
+    let wireMaterial = wireMaterials.get(color);
+    if (!wireMaterial) {
+      wireMaterial = new MeshBasicMaterial({
+        color,
+        wireframe: true,
+        transparent: false,
+        depthTest: true,
+        depthWrite: true
+      });
+      wireMaterials.set(color, wireMaterial);
+    }
     const wire = new Mesh(
       geometry,
-      new MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.9 })
+      wireMaterial
     );
     wire.scale.setScalar(scale);
     shape.add(core, wire);
@@ -344,10 +364,10 @@ export function createFinishZone(center: Vector3): Group {
       Math.sin(angle) * radius - 4
     );
     shape.rotation.set(rng() * Math.PI, rng() * Math.PI, rng() * Math.PI);
-    group.add(shape);
+    details.add(shape);
   }
 
-  return group;
+  return { group, details };
 }
 
 /** Deterministic PRNG so the skyline is identical every run. */

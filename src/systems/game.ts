@@ -452,7 +452,14 @@ export class GameSystem extends createSystem({
     slide.begin({ targetY, isFinal: game.isFinal });
 
     // The bottom of the world only materializes once you commit to it.
-    if (game.isFinal && this.env) this.env.finish.visible = true;
+    if (game.isFinal && this.env) {
+      // Keep distant subpixel debris and hundreds of transparent graffiti
+      // textures out of the first final-slide frame. EnvironmentSystem
+      // reveals the opaque debris incrementally; graffiti returns at rest.
+      this.env.finishDetails.children.forEach((detail) => (detail.visible = false));
+      this.env.graffiti.hide();
+      this.env.finish.visible = true;
+    }
 
     // Sign progression: heading to round 2 -> middle sign, round 3 -> bottom.
     this.env?.signs.show(Math.min(game.round, 2));
@@ -469,6 +476,8 @@ export class GameSystem extends createSystem({
 
   private onWin(): void {
     game.phase = 'WIN';
+    this.env?.finishDetails.children.forEach((detail) => (detail.visible = true));
+    this.env?.graffiti.show();
     audio.play('welldone');
     this.env?.signs.show(3);
     this.env?.signs.setBravo(true);

@@ -53,6 +53,14 @@ function ringAngle(rng: () => number): number {
 export class GraffitiField {
   readonly group = new Group();
 
+  hide(): void {
+    this.group.visible = false;
+  }
+
+  show(): void {
+    this.group.visible = true;
+  }
+
   /** Rebuild the whole field from a list of names (newest first). */
   setMarks(names: string[]): void {
     this.clear();
