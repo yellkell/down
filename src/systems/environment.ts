@@ -11,6 +11,7 @@ import type { SignBoard } from '../env/beacon.js';
 import type { CloudHandles } from '../env/clouds.js';
 import type { Confetti } from '../env/extras.js';
 import type { GraffitiField } from '../env/graffiti.js';
+import type { HoopFlashHandles } from '../env/hoop-flash.js';
 import type { PlatformHandles } from '../env/platform.js';
 import type { SkyHandles } from '../env/sky.js';
 import type { CityHandles } from '../env/structures.js';
@@ -23,6 +24,8 @@ export interface EnvHandles {
   signs: SignBoard;
   confetti: Confetti;
   streaks: StreakHandles;
+  /** Brief edgeless visor tint when crossing a slide hoop. */
+  hoopFlash: HoopFlashHandles;
   city: CityHandles;
   clouds: CloudHandles;
   /** Hidden until the final drop begins. */
@@ -42,7 +45,6 @@ export class EnvironmentSystem extends createSystem({}) {
   private fogBase = new Color(0x050510);
   private fogFinish = new Color(0x15172d);
   private fogColor = new Color();
-  private hoopColor = new Color(0x29f3ff);
   private riserY = -12;
   private finishWarmupFrames = 3;
   /** First seconds of boot: force-render normally-hidden materials (the
@@ -94,25 +96,22 @@ export class EnvironmentSystem extends createSystem({}) {
     skyFx.uDepthLight.value +=
       (finishLightTarget - skyFx.uDepthLight.value) * Math.min(1, delta * 2.5);
 
+    // A crisp but restrained visor hit makes the hoop feel like a laser
+    // membrane. Constant colour across the surrounding sphere means there is
+    // no head-locked gradient edge to reveal when the headset tilts.
+    const flash = env.hoopFlash.uniforms;
+    flash.uColor.value.setHex(game.hoopColor);
+    flash.uStrength.value = game.hoopPulse * 0.115;
     if (game.hoopPulse > 0) {
-      game.hoopPulse = Math.max(0, game.hoopPulse - delta / 0.9);
+      game.hoopPulse = Math.max(0, game.hoopPulse - delta / 0.22);
     }
-    skyFx.uHoopPulse.value +=
-      (game.hoopPulse - skyFx.uHoopPulse.value) * Math.min(1, delta * 7);
-    skyFx.uHoopColor.value.setHex(game.hoopColor);
 
-    // Carry a trace of both effects into fogged world geometry so the colour
-    // feels environmental rather than like a flat screen filter.
+    // Brighten fogged world geometry at the finish along with the sky.
     if (this.scene.fog) {
       this.fogColor.lerpColors(
         this.fogBase,
         this.fogFinish,
         skyFx.uDepthLight.value
-      );
-      this.hoopColor.setHex(game.hoopColor);
-      this.fogColor.lerp(
-        this.hoopColor,
-        skyFx.uHoopPulse.value * 0.1
       );
       this.scene.fog.color.copy(this.fogColor);
     }

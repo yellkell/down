@@ -21,6 +21,7 @@ import { SignBoard } from './env/beacon.js';
 import { createClouds } from './env/clouds.js';
 import { Confetti } from './env/extras.js';
 import { GraffitiField } from './env/graffiti.js';
+import { createHoopFlash } from './env/hoop-flash.js';
 import { createPlatform } from './env/platform.js';
 import { createSky } from './env/sky.js';
 import { createFinishZone, createMegastructures } from './env/structures.js';
@@ -56,7 +57,7 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   // Keep it disabled for the current and subsequent XR projection layers.
   world.renderer.xr.setFoveation(0);
 
-  const { scene, player } = world;
+  const { scene, player, camera } = world;
 
   scene.fog = new FogExp2(0x050510, 0.002); // the original's density — the deep world stays hidden until you're in it
   player.position.set(0, PHASE_HEIGHTS[0], 0);
@@ -111,6 +112,9 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   const streaks = createStreaks();
   player.add(streaks.object);
 
+  const hoopFlash = createHoopFlash();
+  camera.add(hoopFlash.mesh);
+
   const confetti = new Confetti();
   scene.add(confetti.mesh);
 
@@ -120,6 +124,7 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     signs,
     confetti,
     streaks,
+    hoopFlash,
     city,
     clouds,
     finish,

@@ -271,8 +271,7 @@ export class SlideSystem extends createSystem({}) {
     }
   }
 
-  /** A gentle atmospheric colour response replaces the old billboard glow,
-   * which crossed the camera and flashed the entire headset view. */
+  /** Fire the short visor tint exactly as the player crosses each hoop. */
   private updateHoopPasses(): void {
     if (!this.track) return;
     const travelled =

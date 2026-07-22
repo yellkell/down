@@ -26,7 +26,7 @@ export const game = {
   roundRemaining: 999,
   /** Current slide speed in m/s, drives the wind streaks. */
   slideSpeed: 0,
-  /** Eased atmospheric tint fired as the player crosses a slide hoop. */
+  /** Brief visor tint fired as the player crosses a slide hoop. */
   hoopPulse: 0,
   hoopColor: 0x29f3ff
 };

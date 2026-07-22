@@ -268,7 +268,7 @@ export function createStreaks(): StreakHandles {
   return { object, uniforms };
 }
 
-// NOTE: there is deliberately no comfort vignette. Any camera-attached
-// darkening — quad or sphere — reads as a head-locked line/gradient
-// sweeping across the world in stereo, which players find far worse
-// than the motion it's meant to soften.
+// NOTE: there is deliberately no persistent comfort vignette. Camera-attached
+// darkening with an angular gradient reads as a head-locked line sweeping
+// across the world in stereo. The separate hoop flash is constant across its
+// whole sphere and exists only for the instant a laser hoop is crossed.
