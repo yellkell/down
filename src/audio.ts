@@ -27,11 +27,45 @@ const SFX = {
 
 export type SfxName = keyof typeof SFX;
 
+export type MusicId =
+  | 'original'
+  | 'chase'
+  | 'sakupened'
+  | 'fusion'
+  | 'give-it-to-me';
+
+export interface MusicTrack {
+  id: MusicId;
+  label: string;
+  src: string;
+  /** Only the original soundtrack has authored slide-drop timestamps. */
+  synchronized: boolean;
+}
+
+export const MUSIC_TRACKS: readonly MusicTrack[] = [
+  { id: 'original', label: 'ORIGINAL', src: './audio/run.m4a', synchronized: true },
+  { id: 'chase', label: 'CHASE', src: './audio/chase.mp3', synchronized: false },
+  { id: 'sakupened', label: 'SAKUPENED', src: './audio/sakupened.mp3', synchronized: false },
+  { id: 'fusion', label: 'FUSION', src: './audio/fusion.mp3', synchronized: false },
+  {
+    id: 'give-it-to-me',
+    label: 'GIVE IT TO ME',
+    src: './audio/give-it-to-me.mp3',
+    synchronized: false
+  }
+] as const;
+
+export function isMusicId(value: string | null): value is MusicId {
+  return MUSIC_TRACKS.some((track) => track.id === value);
+}
+
 class AudioManager {
   private ctx: AudioContext | null = null;
   private buffers = new Map<SfxName, AudioBuffer>();
   private live = new Set<AudioBufferSourceNode>();
   private music: HTMLAudioElement | null = null;
+  private musicId: MusicId = 'original';
+  private canPlayAac = false;
 
   init(): void {
     this.ctx ??= new AudioContext();
@@ -46,9 +80,17 @@ class AudioManager {
     // AAC where supported, Vorbis everywhere else (open-codec Chromium
     // builds ship without AAC — no browser should ever lose the music).
     const probe = document.createElement('audio');
-    const src = probe.canPlayType('audio/mp4; codecs="mp4a.40.2"')
-      ? './audio/run.m4a'
-      : './audio/run.ogg';
+    this.canPlayAac = Boolean(probe.canPlayType('audio/mp4; codecs="mp4a.40.2"'));
+    this.selectMusic(this.musicId);
+  }
+
+  /** Replace the streamed soundtrack while preserving the one shared player. */
+  selectMusic(id: MusicId): void {
+    const track = MUSIC_TRACKS.find((candidate) => candidate.id === id);
+    if (!track) return;
+    this.music?.pause();
+    this.musicId = id;
+    const src = id === 'original' && !this.canPlayAac ? './audio/run.ogg' : track.src;
     this.music = new Audio(src);
     this.music.preload = 'auto';
     this.music.loop = true;
@@ -109,7 +151,8 @@ class AudioManager {
   /** Playhead of the soundtrack in seconds, or null if it isn't running —
    * the game syncs its phase transitions to this clock. */
   musicTime(): number | null {
-    if (!this.music || this.music.paused) return null;
+    const track = MUSIC_TRACKS.find((candidate) => candidate.id === this.musicId);
+    if (!track?.synchronized || !this.music || this.music.paused) return null;
     return this.music.currentTime;
   }
 

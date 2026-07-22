@@ -11,7 +11,12 @@ import {
   type Entity
 } from '@iwsdk/core';
 
-import { audio } from '../audio.js';
+import {
+  MUSIC_TRACKS,
+  audio,
+  isMusicId,
+  type MusicId
+} from '../audio.js';
 import {
   BARRIER_SIZE,
   GRID_CLIMB_HEIGHT,
@@ -35,6 +40,34 @@ export interface PanelEntities {
   end: Entity;
   warn: Entity;
   name: Entity;
+}
+
+const SONGS_UNLOCKED_KEY = 'down.songs-unlocked.v1';
+const SELECTED_SONG_KEY = 'down.selected-song.v1';
+
+function readStoredSong(): MusicId {
+  try {
+    const stored = window.localStorage.getItem(SELECTED_SONG_KEY);
+    return isMusicId(stored) ? stored : 'original';
+  } catch {
+    return 'original';
+  }
+}
+
+function hasUnlockedSongs(): boolean {
+  try {
+    return window.localStorage.getItem(SONGS_UNLOCKED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function storeValue(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Storage can be unavailable in private/headset browser modes.
+  }
 }
 
 /**
@@ -65,7 +98,11 @@ export class GameSystem extends createSystem({
   private warnText: UIKit.Text | null = null;
   private endTitle: UIKit.Text | null = null;
   private endStats: UIKit.Text | null = null;
+  private endAction: UIKit.Text | null = null;
   private nameDisplay: UIKit.Text | null = null;
+  private songSelector: UIKit.Container | null = null;
+  private songOptions: UIKit.Container | null = null;
+  private songToggle: UIKit.Text | null = null;
 
   private warnTimer = 0;
   private beepAt = 0;
@@ -85,6 +122,10 @@ export class GameSystem extends createSystem({
   private endPanelCanHide = false;
   private endTitleValue = 'GAME OVER';
   private endStatsValue = 'ROUND 1/3';
+  private endActionValue = 'GO AGAIN';
+  private songsUnlocked = hasUnlockedSongs();
+  private selectedSong = readStoredSong();
+  private songMenuOpen = false;
 
   private get panels(): PanelEntities {
     return this.globals.panels as PanelEntities;
@@ -95,6 +136,7 @@ export class GameSystem extends createSystem({
   }
 
   init(): void {
+    audio.selectMusic(this.selectedSong);
     this.wireStartPanel();
     this.wireEndPanel();
     this.wireWarnPanel();
@@ -167,7 +209,39 @@ export class GameSystem extends createSystem({
         audio.blip(1250);
         this.startGame();
       });
+
+      this.songSelector = doc.getElementById('song-selector') as UIKit.Container;
+      this.songOptions = doc.getElementById('song-options') as UIKit.Container;
+      this.songToggle = doc.getElementById('song-toggle') as UIKit.Text;
+      this.songToggle?.addEventListener('click', () => {
+        audio.blip(1100);
+        this.songMenuOpen = !this.songMenuOpen;
+        this.applySongMenu();
+      });
+      MUSIC_TRACKS.forEach((track, index) => {
+        const option = doc.getElementById(`song-${track.id}`) as UIKit.Text | null;
+        option?.addEventListener('click', () => {
+          audio.blip(900 + index * 90);
+          this.selectSong(track.id);
+        });
+      });
+      this.applySongMenu();
     });
+  }
+
+  private selectSong(id: MusicId): void {
+    this.selectedSong = id;
+    this.songMenuOpen = false;
+    storeValue(SELECTED_SONG_KEY, id);
+    audio.selectMusic(id);
+    this.applySongMenu();
+  }
+
+  private applySongMenu(): void {
+    this.songSelector?.setProperties({ display: this.songsUnlocked ? 'flex' : 'none' });
+    this.songOptions?.setProperties({ display: this.songMenuOpen ? 'flex' : 'none' });
+    const track = MUSIC_TRACKS.find((candidate) => candidate.id === this.selectedSong);
+    this.songToggle?.setProperties({ text: `${track?.label ?? 'ORIGINAL'}  ▾` });
   }
 
   private wireEndPanel(): void {
@@ -176,9 +250,12 @@ export class GameSystem extends createSystem({
       if (!doc) return;
       this.endTitle = doc.getElementById('end-title') as UIKit.Text;
       this.endStats = doc.getElementById('end-stats') as UIKit.Text;
+      this.endAction = doc.getElementById('retry-btn') as UIKit.Text;
       this.applyEndContent();
-      const retryBtn = doc.getElementById('retry-btn') as UIKit.Text;
-      retryBtn?.addEventListener('click', () => this.retry());
+      this.endAction?.addEventListener('click', () => {
+        audio.blip(1250);
+        this.handleEndAction();
+      });
       // The first result can arrive while UIKit is still constructing this
       // document. Reapply placement once its meshes actually exist, rather
       // than waiting for a second game over.
@@ -267,15 +344,17 @@ export class GameSystem extends createSystem({
     entity.object3D.position.set(0, shown ? 1.45 : -9999, -1.8);
   }
 
-  private setEndContent(title: string, stats: string): void {
+  private setEndContent(title: string, stats: string, action = 'GO AGAIN'): void {
     this.endTitleValue = title;
     this.endStatsValue = stats;
+    this.endActionValue = action;
     this.applyEndContent();
   }
 
   private applyEndContent(): void {
     this.endTitle?.setProperties({ text: this.endTitleValue });
     this.endStats?.setProperties({ text: this.endStatsValue });
+    this.endAction?.setProperties({ text: this.endActionValue });
   }
 
   /** Same park-below trick for the in-VR start lobby. */
@@ -415,6 +494,38 @@ export class GameSystem extends createSystem({
     this.enterGrid(1.6);
   }
 
+  /** A completed run returns to the summit lobby so the newly unlocked
+   * soundtrack selector gets a deliberate moment before the next descent. */
+  private returnToTop(): void {
+    resetGameState();
+    emit('game-reset');
+    this.env?.signs.reset();
+    this.env?.confetti.stop();
+    if (this.env) this.env.finish.visible = false;
+    this.player.position.set(0, PHASE_HEIGHTS[0], 0);
+    this.setEndPanelShown(false);
+    this.setNamePanelShown(false);
+    this.setPanelVisible(this.panels?.warn, false);
+    this.winWait = 0;
+    this.nameActive = false;
+    this.nameBuf = '';
+    this.songMenuOpen = false;
+    this.applySongMenu();
+    this.started = false;
+    audio.stopAll();
+    if (this.musicStartTimer !== null) {
+      window.clearTimeout(this.musicStartTimer);
+      this.musicStartTimer = null;
+    }
+    this.setStartPanelShown(true);
+    this.setPointersVisible(true);
+  }
+
+  private handleEndAction(): void {
+    if (game.phase === 'WIN') this.returnToTop();
+    else this.retry();
+  }
+
   /**
    * Arrive on a platform. We hold for `hold` seconds — no blocks, no timer —
    * so landing reads as a distinct beat before the dodge round begins.
@@ -474,6 +585,9 @@ export class GameSystem extends createSystem({
 
   private onWin(): void {
     game.phase = 'WIN';
+    this.songsUnlocked = true;
+    storeValue(SONGS_UNLOCKED_KEY, '1');
+    this.applySongMenu();
     this.env?.graffiti.show();
     audio.play('welldone');
     this.env?.signs.show(3);
@@ -483,7 +597,8 @@ export class GameSystem extends createSystem({
 
     this.setEndContent(
       'YOU MADE IT!',
-      'THANKS FOR PLAYING!'
+      'THANKS FOR PLAYING!',
+      'RETURN TO TOP'
     );
     this.setPanelVisible(this.panels?.warn, false);
 
@@ -568,7 +683,7 @@ export class GameSystem extends createSystem({
       // Escape hatch: after a short arm delay, a bare trigger pull on
       // either controller retries — no pointing at the panel required.
       this.endArm += delta;
-      if (this.endArm > 1.2 && this.selectPressed()) this.retry();
+      if (this.endArm > 1.2 && this.selectPressed()) this.handleEndAction();
       return;
     }
     if (game.phase === 'START') {

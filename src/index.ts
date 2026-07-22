@@ -132,7 +132,7 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   // so they press BEGIN themselves (the run never auto-starts in VR).
   const startPanel = world
     .createTransformEntity(undefined, world.playerEntity)
-    .addComponent(PanelUI, { config: './ui/start.json', maxWidth: 1.35, maxHeight: 1.15 })
+    .addComponent(PanelUI, { config: './ui/start.json', maxWidth: 1.35, maxHeight: 1.65 })
     .addComponent(Interactable);
   startPanel.object3D!.position.set(0, -9999, -1.9);
 

@@ -61,12 +61,85 @@
     border-color: #29f3ff;
     border-width: 0.24;
   }
+  #song-selector {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 94%;
+    margin-top: 2.2;
+  }
+  .song-label {
+    font-size: 1.55;
+    font-weight: bold;
+    letter-spacing: 0.5;
+    color: #8fefff;
+    text-align: center;
+  }
+  #song-toggle {
+    width: 100%;
+    padding: 1.6;
+    margin-top: 0.7;
+    background-color: #0b2140;
+    color: #ffffff;
+    border-color: #29f3ff;
+    border-width: 0.12;
+    border-radius: 0.32;
+    font-size: 2.05;
+    font-weight: bold;
+    letter-spacing: 0.35;
+    text-align: center;
+    cursor: pointer;
+  }
+  #song-toggle:hover {
+    background-color: #164578;
+    border-color: #ffffff;
+  }
+  #song-options {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    padding: 0.65;
+    margin-top: 0.35;
+    background-color: #070b16;
+    border-color: #155a77;
+    border-width: 0.08;
+  }
+  .song-option {
+    width: 100%;
+    padding: 1.05;
+    margin-top: 0.25;
+    background-color: #0c1425;
+    color: #c9faff;
+    border-color: #17364a;
+    border-width: 0.06;
+    font-size: 1.7;
+    font-weight: bold;
+    letter-spacing: 0.25;
+    text-align: center;
+    cursor: pointer;
+  }
+  .song-option:hover {
+    background-color: #173b59;
+    color: #ffffff;
+    border-color: #29f3ff;
+  }
 </style>
 <div class="panel">
   <span class="title">READY TO GO?</span>
   <div class="warning">
     <span class="warning-line">CLEAR A 2M X 2M SPACE</span>
     <span class="warning-line recenter">STAND AT CENTER AND RECENTER</span>
+  </div>
+  <div id="song-selector">
+    <span class="song-label">CHOOSE YOUR TRACK</span>
+    <button id="song-toggle">ORIGINAL  &#9662;</button>
+    <div id="song-options">
+      <button id="song-original" class="song-option">ORIGINAL</button>
+      <button id="song-chase" class="song-option">CHASE</button>
+      <button id="song-sakupened" class="song-option">SAKUPENED</button>
+      <button id="song-fusion" class="song-option">FUSION</button>
+      <button id="song-give-it-to-me" class="song-option">GIVE IT TO ME</button>
+    </div>
   </div>
   <button id="begin-btn" class="begin-button">LET'S GO</button>
 </div>
