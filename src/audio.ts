@@ -66,11 +66,9 @@ class AudioManager {
   private ctx: AudioContext | null = null;
   private buffers = new Map<SfxName, AudioBuffer>();
   private live = new Set<AudioBufferSourceNode>();
-  private activeVoices = new Set<AudioBufferSourceNode>();
   private music: HTMLAudioElement | null = null;
   private musicId: MusicId = 'original';
   private canPlayAac = false;
-  private duckReleaseTimer: number | null = null;
 
   init(): void {
     this.ctx ??= new AudioContext();
@@ -99,39 +97,13 @@ class AudioManager {
     this.music = new Audio(src);
     this.music.preload = 'auto';
     this.music.loop = true;
-    this.applyMusicVolume();
+    this.music.volume = this.baseMusicVolume();
   }
 
-  /** The supplied bonus masters are hotter than Run, so give them their own
-   * comfortable baseline before applying temporary voice ducking. */
+  /** The supplied MP3 masters are hotter than Run, so only those four bonus
+   * tracks use a quieter fixed baseline. Voice cues never alter music gain. */
   private baseMusicVolume(): number {
     return this.musicId === 'original' ? 0.6 : 0.38;
-  }
-
-  private applyMusicVolume(): void {
-    if (!this.music) return;
-    const base = this.baseMusicVolume();
-    this.music.volume = this.activeVoices.size > 0 ? base * 0.32 : base;
-  }
-
-  private duckForVoice(source: AudioBufferSourceNode): void {
-    if (this.duckReleaseTimer !== null) {
-      window.clearTimeout(this.duckReleaseTimer);
-      this.duckReleaseTimer = null;
-    }
-    this.activeVoices.add(source);
-    this.applyMusicVolume();
-  }
-
-  private releaseVoice(source: AudioBufferSourceNode): void {
-    this.activeVoices.delete(source);
-    if (this.activeVoices.size > 0) return;
-    if (this.duckReleaseTimer !== null) window.clearTimeout(this.duckReleaseTimer);
-    // Hold the dip for a breath so adjacent countdown calls do not pump.
-    this.duckReleaseTimer = window.setTimeout(() => {
-      this.duckReleaseTimer = null;
-      this.applyMusicVolume();
-    }, 140);
   }
 
   /** Call from any real DOM gesture (the intro buttons) so the context is
@@ -152,11 +124,7 @@ class AudioManager {
     source.connect(gain);
     gain.connect(ctx.destination);
     this.live.add(source);
-    this.duckForVoice(source);
-    source.onended = () => {
-      this.live.delete(source);
-      this.releaseVoice(source);
-    };
+    source.onended = () => this.live.delete(source);
     source.start();
   }
 
@@ -186,7 +154,6 @@ class AudioManager {
   startMusic(): void {
     if (!this.music) return;
     this.music.currentTime = 0;
-    this.applyMusicVolume();
     void this.music.play().catch(() => {});
   }
 
@@ -205,10 +172,6 @@ class AudioManager {
   /** Silence the previous run before replaying its opening cue. */
   stopAll(): void {
     this.music?.pause();
-    if (this.duckReleaseTimer !== null) {
-      window.clearTimeout(this.duckReleaseTimer);
-      this.duckReleaseTimer = null;
-    }
     this.live.forEach((source) => {
       try {
         source.stop();
@@ -217,8 +180,6 @@ class AudioManager {
       }
     });
     this.live.clear();
-    this.activeVoices.clear();
-    this.applyMusicVolume();
   }
 }
 

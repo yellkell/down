@@ -578,7 +578,7 @@ export class GameSystem extends createSystem({
     this.lookDownTimer = window.setTimeout(() => {
       audio.play('lookdown');
       this.lookDownTimer = null;
-    }, game.round === 1 ? 650 : 1250);
+    }, game.round === 1 ? 1100 : 1250);
   }
 
   private enterSlide(): void {
