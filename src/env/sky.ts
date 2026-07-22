@@ -90,7 +90,7 @@ export function createSky(): SkyHandles {
 
         // Brief, restrained feedback when crossing a slide hoop. This is a
         // uniform atmospheric tint, not geometry that can enter either eye.
-        col += uHoopColor * uHoopPulse * 0.075;
+        col += uHoopColor * uHoopPulse * 0.120;
 
         gl_FragColor = vec4(col, 1.0);
       }

@@ -95,7 +95,7 @@ export class EnvironmentSystem extends createSystem({}) {
       (finishLightTarget - skyFx.uDepthLight.value) * Math.min(1, delta * 2.5);
 
     if (game.hoopPulse > 0) {
-      game.hoopPulse = Math.max(0, game.hoopPulse - delta / 0.75);
+      game.hoopPulse = Math.max(0, game.hoopPulse - delta / 0.9);
     }
     skyFx.uHoopPulse.value +=
       (game.hoopPulse - skyFx.uHoopPulse.value) * Math.min(1, delta * 7);
@@ -112,7 +112,7 @@ export class EnvironmentSystem extends createSystem({}) {
       this.hoopColor.setHex(game.hoopColor);
       this.fogColor.lerp(
         this.hoopColor,
-        skyFx.uHoopPulse.value * 0.06
+        skyFx.uHoopPulse.value * 0.1
       );
       this.scene.fog.color.copy(this.fogColor);
     }
