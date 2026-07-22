@@ -34,6 +34,11 @@ const TAG_COLORS = [
 const CANVAS_W = 384;
 const CANVAS_H = 144;
 
+// Tags orbit a point 2m in front of the landing position. An 8m minimum
+// orbit therefore keeps every stored tag centre at least 6m from the player
+// (about 4.5m to the edge of even the widest 3.1m tag).
+const NEAR_TAG_RADIUS = 8;
+
 // The finish "mountain" signs float at the player's front-left — SignBoard
 // sits at player-local (-7.5, 2.4, -9.5) (see extras.ts). Keep graffiti out
 // of the cone toward them so names never clutter or hide behind the artwork.
@@ -95,7 +100,7 @@ export class GraffitiField {
 
 /**
  * One placed tag in finish-zone local space. Roughly a third are stencilled
- * flat on the deck in a tight ring around the pad; the rest hang in the air
+ * low over the deck in a clear ring around the pad; the rest hang in the air
  * amongst the debris field, facing inward so the landing player is
  * surrounded by everyone who came before.
  */
@@ -110,7 +115,7 @@ function buildTag(name: string, seed: number): Group {
     // player. Now they sit just above the floor and face the player, leaned
     // back like angled plaques rising off the ground — readable, while still
     // reading as a ground-level ring distinct from the floating sprays.
-    const radius = 3 + rng() * 8;
+    const radius = NEAR_TAG_RADIUS + rng() * 6;
     const angle = ringAngle(rng);
     tag.position.set(
       Math.cos(angle) * radius,
@@ -125,7 +130,7 @@ function buildTag(name: string, seed: number): Group {
     // properly (lookAt, not hand-rolled yaw — v1 had tags side-on, which
     // read as mirrored text through their DoubleSide backs), then add a
     // little hand-hung jitter.
-    const radius = 4.5 + rng() * 13;
+    const radius = NEAR_TAG_RADIUS + rng() * 12;
     const angle = ringAngle(rng);
     tag.position.set(
       Math.cos(angle) * radius,
