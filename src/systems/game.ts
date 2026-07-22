@@ -1,8 +1,10 @@
 import {
   createSystem,
   eq,
+  Hovered,
   PanelDocument,
   PanelUI,
+  Pressed,
   RayDisplayMode,
   UIKit,
   UIKitDocument,
@@ -110,9 +112,10 @@ export class GameSystem extends createSystem({
   private warnTimer = 0;
   private beepAt = 0;
   private started = false;
-  /** Prevent the RETURN TO TOP release from clicking LET'S GO behind it. */
+  /** The lobby only arms after the RETURN TO TOP input has fully released. */
   private lobbyArmed = true;
-  private lobbyArmTimer: number | null = null;
+  private lobbyTransitionPending = false;
+  private lobbyReleaseFrames = 0;
   private musicStartTimer: number | null = null;
   private lookDownTimer: number | null = null;
   /** Settle hold on a fresh platform before the blocks start rising. */
@@ -527,6 +530,7 @@ export class GameSystem extends createSystem({
   /** A completed run returns to the summit lobby so the newly unlocked
    * soundtrack selector gets a deliberate moment before the next descent. */
   private returnToTop(): void {
+    if (this.lobbyTransitionPending) return;
     resetGameState();
     emit('game-reset');
     this.env?.signs.reset();
@@ -542,13 +546,14 @@ export class GameSystem extends createSystem({
     this.songMenuOpen = false;
     this.creditsOpen = false;
     this.applySongMenu();
-    this.started = false;
+    // Keep the lobby absent and inert while the input that selected RETURN TO
+    // TOP finishes. Revealing it inside the old button's pointer event lets
+    // that same gesture leak through to LET'S GO (and can strand pointer
+    // capture when the end panel is moved mid-press).
+    this.started = true;
     this.lobbyArmed = false;
-    if (this.lobbyArmTimer !== null) window.clearTimeout(this.lobbyArmTimer);
-    this.lobbyArmTimer = window.setTimeout(() => {
-      this.lobbyArmed = true;
-      this.lobbyArmTimer = null;
-    }, 450);
+    this.lobbyTransitionPending = true;
+    this.lobbyReleaseFrames = 0;
     audio.stopAll();
     if (this.musicStartTimer !== null) {
       window.clearTimeout(this.musicStartTimer);
@@ -558,6 +563,29 @@ export class GameSystem extends createSystem({
       window.clearTimeout(this.lookDownTimer);
       this.lookDownTimer = null;
     }
+    this.setStartPanelShown(false);
+    this.setPointersVisible(false);
+  }
+
+  /** Complete the panel handoff only after both controllers are released and
+   * one whole clean frame has passed outside the old UIKit pointer event. */
+  private updateLobbyTransition(): void {
+    const gamepads = this.input.xr.gamepads;
+    const selecting = Boolean(
+      gamepads.left?.getSelecting() || gamepads.right?.getSelecting()
+    );
+    if (selecting) {
+      this.lobbyReleaseFrames = 0;
+      return;
+    }
+
+    this.lobbyReleaseFrames += 1;
+    if (this.lobbyReleaseFrames < 2) return;
+
+    this.lobbyTransitionPending = false;
+    this.lobbyReleaseFrames = 0;
+    this.started = false;
+    this.lobbyArmed = true;
     this.setStartPanelShown(true);
     this.setPointersVisible(true);
   }
@@ -699,6 +727,15 @@ export class GameSystem extends createSystem({
     );
   }
 
+  /** A trigger aimed at the result panel belongs exclusively to UIKit. The
+   * bare-trigger retry shortcut must not race the button being clicked. */
+  private endPanelIsTargeted(): boolean {
+    const panel = this.panels?.end;
+    return Boolean(
+      panel?.hasComponent(Hovered) || panel?.hasComponent(Pressed)
+    );
+  }
+
   private roundRemaining(): number {
     if (!IS_TURBO) {
       const mt = audio.musicTime();
@@ -715,6 +752,11 @@ export class GameSystem extends createSystem({
   // -- Per-frame ------------------------------------------------------------
 
   update(delta: number): void {
+    if (this.lobbyTransitionPending) {
+      this.updateLobbyTransition();
+      return;
+    }
+
     if (game.phase === 'WIN' || game.phase === 'GAME_OVER') {
       // Post-win celebration beat, then the keyboard rises.
       if (this.winWait > 0) {
@@ -732,7 +774,13 @@ export class GameSystem extends createSystem({
       // Escape hatch: after a short arm delay, a bare trigger pull on
       // either controller retries — no pointing at the panel required.
       this.endArm += delta;
-      if (this.endArm > 1.2 && this.selectPressed()) this.handleEndAction();
+      if (
+        this.endArm > 1.2 &&
+        this.selectPressed() &&
+        !this.endPanelIsTargeted()
+      ) {
+        this.handleEndAction();
+      }
       return;
     }
     if (game.phase === 'START') {
