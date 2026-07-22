@@ -571,11 +571,12 @@ export class GameSystem extends createSystem({
     game.lookForward = false;
     game.danger = 0;
     this.gridHold = hold;
-    this.showWarning('LOOK DOWN', hold + 0.5);
     // Let BEGIN or the longer landing praise finish, then speak the
-    // instruction while LOOK DOWN is still large and visible.
+    // instruction and reveal its panel on the same frame. The line is just
+    // under a second long; keep the words up for one more second afterward.
     if (this.lookDownTimer !== null) window.clearTimeout(this.lookDownTimer);
     this.lookDownTimer = window.setTimeout(() => {
+      this.showWarning('LOOK DOWN', 2.0);
       audio.play('lookdown');
       this.lookDownTimer = null;
     }, game.round === 1 ? 1800 : 1250);
