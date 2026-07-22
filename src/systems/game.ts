@@ -110,6 +110,7 @@ export class GameSystem extends createSystem({
   private beepAt = 0;
   private started = false;
   private musicStartTimer: number | null = null;
+  private lookDownTimer: number | null = null;
   /** Settle hold on a fresh platform before the blocks start rising. */
   private gridHold = 0;
   /** Seconds since the end panel appeared — arms the trigger-retry. */
@@ -482,6 +483,8 @@ export class GameSystem extends createSystem({
 
   private startRunAudio(): void {
     if (this.musicStartTimer !== null) window.clearTimeout(this.musicStartTimer);
+    if (this.lookDownTimer !== null) window.clearTimeout(this.lookDownTimer);
+    this.lookDownTimer = null;
     audio.stopAll();
     audio.play('begin');
     // begin.ogg is 560 ms. Give the full line clear air before Run enters.
@@ -542,6 +545,10 @@ export class GameSystem extends createSystem({
       window.clearTimeout(this.musicStartTimer);
       this.musicStartTimer = null;
     }
+    if (this.lookDownTimer !== null) {
+      window.clearTimeout(this.lookDownTimer);
+      this.lookDownTimer = null;
+    }
     this.setStartPanelShown(true);
     this.setPointersVisible(true);
   }
@@ -565,6 +572,13 @@ export class GameSystem extends createSystem({
     game.danger = 0;
     this.gridHold = hold;
     this.showWarning('LOOK DOWN', hold + 0.5);
+    // Let BEGIN or the longer landing praise finish, then speak the
+    // instruction while LOOK DOWN is still large and visible.
+    if (this.lookDownTimer !== null) window.clearTimeout(this.lookDownTimer);
+    this.lookDownTimer = window.setTimeout(() => {
+      audio.play('lookdown');
+      this.lookDownTimer = null;
+    }, game.round === 1 ? 650 : 1250);
   }
 
   private enterSlide(): void {
@@ -770,7 +784,8 @@ export class GameSystem extends createSystem({
       game.warning = 1;
       spawner?.holdFire();
       if (remaining <= this.beepAt) {
-        audio.play('square', 0.7);
+        const cue = this.beepAt === 3 ? 'three' : this.beepAt === 2 ? 'two' : 'one';
+        audio.play(cue, 0.9);
         this.beepAt -= 1;
       }
     }

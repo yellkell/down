@@ -17,9 +17,12 @@
  */
 const SFX = {
   begin: './audio/begin.ogg',
+  one: './audio/countdown-one.ogg',
+  two: './audio/countdown-two.ogg',
+  three: './audio/countdown-three.ogg',
+  lookdown: './audio/look-down.ogg',
   die: './audio/die.ogg',
   gameover: './audio/gameover.ogg',
-  square: './audio/square.ogg',
   nice: './audio/nice.wav',
   perfect: './audio/perfect.wav',
   welldone: './audio/welldone.wav'
