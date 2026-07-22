@@ -160,13 +160,6 @@ export class GameSystem extends createSystem({
     });
   }
 
-  /** Start immediately — used by the 2D "PREVIEW IN BROWSER" (desktop). */
-  beginRun(): void {
-    this.endPanelCanHide = true;
-    this.setEndPanelShown(false);
-    this.startGame();
-  }
-
   /**
    * Show the in-VR lobby and wait for BEGIN — the run does NOT auto-start
    * on entering VR. Called once the immersive session becomes visible.

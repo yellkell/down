@@ -178,10 +178,7 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   const game = world.getSystem(GameSystem);
   const intro = document.getElementById('intro');
   const enterVrBtn = document.getElementById('enter-vr');
-  const previewBtn = document.getElementById('play-browser');
-  const vrStatus = document.getElementById('vr-status');
   const wordmark = document.getElementById('wordmark');
-  const hint = document.getElementById('hint');
 
   let dismissed = false;
   const dismissIntro = (): void => {
@@ -190,7 +187,6 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     intro?.classList.add('gone');
     window.setTimeout(() => intro?.remove(), 700);
     wordmark?.removeAttribute('hidden');
-    hint?.removeAttribute('hidden');
   };
 
   // ENTER VR: request the session. The run does NOT auto-start — once the
@@ -203,12 +199,6 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
     // where UIKit button clicks don't count as gestures.
     audio.unlock();
     world.launchXR();
-  });
-  // PREVIEW: desktop spectator — starts straight away.
-  previewBtn?.addEventListener('click', () => {
-    audio.unlock();
-    dismissIntro();
-    game?.beginRun();
   });
   world.visibilityState.subscribe((state) => {
     if (state !== VisibilityState.NonImmersive) {
@@ -223,25 +213,18 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   window.setTimeout(() => loading?.remove(), 700);
   intro?.removeAttribute('hidden');
 
-  // Probe for a headset to tailor the call-to-action.
+  // Silently disable the sole action when immersive VR is unavailable. The
+  // landing screen deliberately contains no status or explanatory copy.
   const xr = (navigator as Navigator & {
     xr?: { isSessionSupported(mode: string): Promise<boolean> };
   }).xr;
-  const noHeadset = (msg: string): void => {
-    enterVrBtn?.classList.add('disabled');
-    if (vrStatus) vrStatus.textContent = msg;
-  };
   if (xr?.isSessionSupported) {
     xr.isSessionSupported('immersive-vr')
       .then((ok) => {
-        if (ok) {
-          if (vrStatus) vrStatus.textContent = 'Headset ready — clear a 2m × 2m space';
-        } else {
-          noHeadset('No headset detected — preview in your browser');
-        }
+        if (!ok) enterVrBtn?.classList.add('disabled');
       })
-      .catch(() => noHeadset('No headset detected — preview in your browser'));
+      .catch(() => enterVrBtn?.classList.add('disabled'));
   } else {
-    noHeadset('WebXR not available — preview in your browser');
+    enterVrBtn?.classList.add('disabled');
   }
 });

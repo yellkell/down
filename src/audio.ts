@@ -10,7 +10,7 @@
  * - Music: HTMLAudio, because it streams a 4MB file and its currentTime
  *   is the sync clock the whole game runs on.
  *
- * The context unlocks on the 2D intro's button click (a real DOM gesture);
+ * The context unlocks on the 2D intro button click (a real DOM gesture);
  * everything after that — including UIKit clicks in VR, which are NOT DOM
  * gestures — just works. All paths are relative so the game works from a
  * subpath (GitHub Pages).
@@ -111,7 +111,7 @@ class AudioManager {
     return this.musicId === 'sakupened' || this.musicId === 'fusion' ? 0.38 : 0.6;
   }
 
-  /** Call from any real DOM gesture (the intro buttons) so the context is
+  /** Call from any real DOM gesture (the intro button) so the context is
    * running before VR, where UIKit clicks don't count as gestures. */
   unlock(): void {
     void this.ctx?.resume().catch(() => {});

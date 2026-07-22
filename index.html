@@ -18,7 +18,6 @@
     <style>
       :root {
         --cyan: #29f3ff;
-        --magenta: #ff3df2;
         --ink: #030308;
       }
       html,
@@ -53,16 +52,6 @@
         object-fit: contain;
         filter: drop-shadow(0 0 13px rgba(41, 243, 255, 0.42));
       }
-      #hint {
-        bottom: 20px;
-        left: 0;
-        right: 0;
-        text-align: center;
-        font-size: 12px;
-        letter-spacing: 0.18em;
-        color: rgba(255, 255, 255, 0.45);
-      }
-
       /* --- 2D intro / landing page --- */
       #intro {
         position: fixed;
@@ -112,13 +101,6 @@
           transform: translateY(-10px);
         }
       }
-      #intro .tagline {
-        font-size: 13px;
-        letter-spacing: 0.42em;
-        color: rgba(255, 255, 255, 0.62);
-        margin-top: 4px;
-        text-transform: uppercase;
-      }
       #intro .buttons {
         display: flex;
         flex-direction: column;
@@ -159,71 +141,18 @@
         box-shadow: none;
         cursor: not-allowed;
       }
-      #play-browser {
-        padding: 11px 30px;
-        font-size: 13px;
-        color: var(--magenta);
-        background: transparent;
-        border: 1px solid rgba(255, 61, 242, 0.5);
-      }
-      #play-browser:hover {
-        background: rgba(255, 61, 242, 0.12);
-        transform: translateY(-1px);
-      }
-      #vr-status {
-        margin-top: 20px;
-        font-size: 11px;
-        letter-spacing: 0.22em;
-        color: rgba(255, 255, 255, 0.4);
-        min-height: 14px;
-        text-transform: uppercase;
-        text-align: center;
-        padding: 0 20px;
-      }
-
       /* --- loading --- */
       #loading {
         position: fixed;
         inset: 0;
         z-index: 30;
         display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 18px;
         background: var(--ink);
         transition: opacity 0.6s ease;
       }
       #loading.done {
         opacity: 0;
         pointer-events: none;
-      }
-      #loading .bar {
-        width: 180px;
-        height: 2px;
-        background: rgba(255, 255, 255, 0.12);
-        overflow: hidden;
-      }
-      #loading .bar::after {
-        content: '';
-        display: block;
-        height: 100%;
-        width: 40%;
-        background: linear-gradient(90deg, var(--cyan), var(--magenta));
-        animation: scan 1.1s ease-in-out infinite alternate;
-      }
-      @keyframes scan {
-        from {
-          transform: translateX(-40%);
-        }
-        to {
-          transform: translateX(250%);
-        }
-      }
-      #loading .label {
-        font-size: 12px;
-        letter-spacing: 0.5em;
-        color: rgba(255, 255, 255, 0.6);
       }
     </style>
   </head>
@@ -234,25 +163,16 @@
       <img src="./textures/down-logo.png" alt="DOWN" />
     </div>
 
-    <div class="overlay" id="hint" hidden>
-      BEST IN VR &middot; CLEAR A 2M &times; 2M SPACE &middot; DESKTOP = SPECTATOR MODE
-    </div>
-
     <div id="intro" hidden>
       <div class="logo-frame">
         <img class="logo" src="./textures/down-logo.png" alt="DOWN" />
       </div>
       <div class="buttons">
         <button id="enter-vr">ENTER VR</button>
-        <button id="play-browser">PREVIEW IN BROWSER</button>
       </div>
-      <div id="vr-status">Checking for a headset&hellip;</div>
     </div>
 
-    <div id="loading">
-      <div class="label">DROPPING IN</div>
-      <div class="bar"></div>
-    </div>
+    <div id="loading"></div>
 
     <script type="module" src="/src/index.ts"></script>
   </body>
