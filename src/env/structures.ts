@@ -308,10 +308,9 @@ export function createFinishZone(center: Vector3): FinishZoneHandles {
     new TorusGeometry(4, 0.07, 10, 64),
     new MeshBasicMaterial({
       color: NEON.lime,
-      blending: AdditiveBlending,
-      transparent: true,
-      opacity: 0.9,
-      depthWrite: false
+      transparent: false,
+      depthTest: true,
+      depthWrite: true
     })
   );
   padRing.rotation.x = Math.PI / 2;

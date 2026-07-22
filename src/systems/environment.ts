@@ -1,4 +1,4 @@
-import { createSystem, Group, Vector3 } from '@iwsdk/core';
+import { Color, createSystem, Group, Vector3 } from '@iwsdk/core';
 
 import {
   GRID_CLIMB_HEIGHT,
@@ -39,6 +39,10 @@ export interface EnvHandles {
  */
 export class EnvironmentSystem extends createSystem({}) {
   private headWorld = new Vector3();
+  private fogBase = new Color(0x050510);
+  private fogFinish = new Color(0x15172d);
+  private fogColor = new Color();
+  private hoopColor = new Color(0x29f3ff);
   private riserY = -12;
   private finishWarmupFrames = 3;
   /** First seconds of boot: force-render normally-hidden materials (the
@@ -77,6 +81,41 @@ export class EnvironmentSystem extends createSystem({}) {
     env.city.uniforms.uTime.value = t;
     env.city.uniforms.uPlayer.value.copy(this.player.position);
     env.clouds.uniforms.uTime.value = t;
+
+    // The old finish wash was a billboard intersecting the stereo camera,
+    // so pitching the headset changed the whole frame. Brighten the actual
+    // atmosphere over the final 90m instead; its strength depends only on
+    // altitude and therefore remains fixed however the player looks around.
+    const finishLightTarget = Math.min(
+      1,
+      Math.max(0, (WINNER_HEIGHT + 90 - this.player.position.y) / 90)
+    );
+    const skyFx = env.sky.uniforms;
+    skyFx.uDepthLight.value +=
+      (finishLightTarget - skyFx.uDepthLight.value) * Math.min(1, delta * 2.5);
+
+    if (game.hoopPulse > 0) {
+      game.hoopPulse = Math.max(0, game.hoopPulse - delta / 0.75);
+    }
+    skyFx.uHoopPulse.value +=
+      (game.hoopPulse - skyFx.uHoopPulse.value) * Math.min(1, delta * 7);
+    skyFx.uHoopColor.value.setHex(game.hoopColor);
+
+    // Carry a trace of both effects into fogged world geometry so the colour
+    // feels environmental rather than like a flat screen filter.
+    if (this.scene.fog) {
+      this.fogColor.lerpColors(
+        this.fogBase,
+        this.fogFinish,
+        skyFx.uDepthLight.value
+      );
+      this.hoopColor.setHex(game.hoopColor);
+      this.fogColor.lerp(
+        this.hoopColor,
+        skyFx.uHoopPulse.value * 0.06
+      );
+      this.scene.fog.color.copy(this.fogColor);
+    }
 
     // Platform rides with the rig — but hides during slides: seen edge-on
     // at foot level while descending, its translucent plane cuts a huge

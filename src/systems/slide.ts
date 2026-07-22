@@ -69,6 +69,7 @@ export class SlideSystem extends createSystem({}) {
   private active = false;
   private targetY = 0;
   private targetZ = 0;
+  private startY = 0;
   private isFinal = false;
   private speed = 0;
   private elapsed = 0;
@@ -138,6 +139,7 @@ export class SlideSystem extends createSystem({}) {
     this.pendingBarriers = [];
 
     const start = this.player.position;
+    this.startY = start.y;
     const drop = start.y - this.targetY;
     const length = drop / Math.sin(SLIDE_ANGLE);
     this.targetZ = start.z - Math.cos(SLIDE_ANGLE) * length;
@@ -262,10 +264,24 @@ export class SlideSystem extends createSystem({}) {
     }
     if (this.track) {
       for (const hoop of this.track.hoops) {
-        hoop.getWorldPosition(this.fadeWorld);
+        hoop.mesh.getWorldPosition(this.fadeWorld);
         const d = this.fadeWorld.distanceTo(eye);
-        hoop.visible = d < 140;
+        hoop.mesh.visible = d < 140;
       }
+    }
+  }
+
+  /** A gentle atmospheric colour response replaces the old billboard glow,
+   * which crossed the camera and flashed the entire headset view. */
+  private updateHoopPasses(): void {
+    if (!this.track) return;
+    const travelled =
+      (this.startY - this.player.position.y) / Math.sin(SLIDE_ANGLE);
+    for (const hoop of this.track.hoops) {
+      if (hoop.passed || travelled < hoop.distance) continue;
+      hoop.passed = true;
+      game.hoopColor = hoop.color;
+      game.hoopPulse = 1;
     }
   }
 
@@ -307,6 +323,7 @@ export class SlideSystem extends createSystem({}) {
     const dz = -Math.cos(SLIDE_ANGLE) * this.speed * delta;
     this.player.position.y += dy;
     this.player.position.z += dz;
+    this.updateHoopPasses();
 
     if (this.player.position.y <= this.targetY + 0.05) {
       this.player.position.y = this.targetY;

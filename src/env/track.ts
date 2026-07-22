@@ -22,7 +22,12 @@ export interface TrackHandles {
   /** Hoop meshes are visibility-culled before their thin geometry becomes
    * subpixel. They deliberately have no glow sprite: crossing a billboard
    * at speed produces a full-view colour flash in VR. */
-  hoops: Mesh[];
+  hoops: Array<{
+    mesh: Mesh;
+    color: number;
+    distance: number;
+    passed: boolean;
+  }>;
   dispose: () => void;
 }
 
@@ -36,6 +41,14 @@ let ribbonGeometry: PlaneGeometry | null = null;
 let railGeometry: BoxGeometry | null = null;
 let railMaterial: MeshBasicMaterial | null = null;
 let hoopGeometry: TorusGeometry | null = null;
+const TRACK_HALF_WIDTH = 1.15;
+const HOOP_RADIUS = 1.7;
+// Put the torus centre at the height where its centreline meets y=0 exactly
+// at the two track edges. The lower arc stays hidden beneath the solid bed,
+// so the visible hoop now grows cleanly out of the rails rather than inside it.
+const HOOP_CENTER_Y = Math.sqrt(
+  HOOP_RADIUS * HOOP_RADIUS - TRACK_HALF_WIDTH * TRACK_HALF_WIDTH
+);
 
 /**
  * A neon half-pipe of light, generated at slide start from wherever the rig
@@ -133,7 +146,7 @@ export function createSlideTrack(length: number): TrackHandles {
     depthWrite: true,
     depthTest: true
   });
-  [-1.15, 1.15].forEach((x) => {
+  [-TRACK_HALF_WIDTH, TRACK_HALF_WIDTH].forEach((x) => {
     const rail = new Mesh(railGeometry!, railMaterial!);
     rail.scale.z = length;
     rail.position.set(x, 0.05, -length / 2);
@@ -141,7 +154,7 @@ export function createSlideTrack(length: number): TrackHandles {
   });
 
   // --- Energy hoops every 40m — motion + progress cue ------------------
-  hoopGeometry ??= new TorusGeometry(1.7, 0.035, 10, 48);
+  hoopGeometry ??= new TorusGeometry(HOOP_RADIUS, 0.035, 10, 48);
   const hoopCount = Math.floor(length / 40);
   const hoops: TrackHandles['hoops'] = [];
   for (let i = 1; i <= hoopCount; i++) {
@@ -153,10 +166,11 @@ export function createSlideTrack(length: number): TrackHandles {
       depthTest: true
     });
     const hoop = new Mesh(hoopGeometry, material);
-    hoop.position.set(0, 1.3, -i * 40);
+    const distance = i * 40;
+    hoop.position.set(0, HOOP_CENTER_Y, -distance);
     group.add(hoop);
     disposables.push(material);
-    hoops.push(hoop);
+    hoops.push({ mesh: hoop, color, distance, passed: false });
   }
 
   return {

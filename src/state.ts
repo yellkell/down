@@ -25,7 +25,10 @@ export const game = {
   /** Seconds left in the current dodge round (music-synced). */
   roundRemaining: 999,
   /** Current slide speed in m/s, drives the wind streaks. */
-  slideSpeed: 0
+  slideSpeed: 0,
+  /** Eased atmospheric tint fired as the player crosses a slide hoop. */
+  hoopPulse: 0,
+  hoopColor: 0x29f3ff
 };
 
 export type GameEvent =
@@ -60,4 +63,6 @@ export function resetGameState(): void {
   game.arrival = 0;
   game.roundRemaining = 999;
   game.slideSpeed = 0;
+  game.hoopPulse = 0;
+  game.hoopColor = 0x29f3ff;
 }

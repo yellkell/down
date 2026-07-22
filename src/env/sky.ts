@@ -19,7 +19,12 @@ import { makeGlow, NOISE_GLSL } from './fx.js';
 
 export interface SkyHandles {
   group: Group;
-  uniforms: { uTime: { value: number } };
+  uniforms: {
+    uTime: { value: number };
+    uDepthLight: { value: number };
+    uHoopPulse: { value: number };
+    uHoopColor: { value: Color };
+  };
 }
 
 /**
@@ -30,12 +35,15 @@ export interface SkyHandles {
 export function createSky(): SkyHandles {
   const group = new Group();
   const uTime = { value: 0 };
+  const uDepthLight = { value: 0 };
+  const uHoopPulse = { value: 0 };
+  const uHoopColor = { value: new Color(NEON.cyan) };
 
   // --- Nebula dome ------------------------------------------------------
   const nebulaMaterial = new ShaderMaterial({
     side: BackSide,
     depthWrite: false,
-    uniforms: { uTime },
+    uniforms: { uTime, uDepthLight, uHoopPulse, uHoopColor },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() {
@@ -46,6 +54,9 @@ export function createSky(): SkyHandles {
     fragmentShader: /* glsl */ `
       varying vec3 vDir;
       uniform float uTime;
+      uniform float uDepthLight;
+      uniform float uHoopPulse;
+      uniform vec3 uHoopColor;
       ${NOISE_GLSL}
       void main() {
         vec3 d = normalize(vDir);
@@ -72,6 +83,14 @@ export function createSky(): SkyHandles {
         // The whole lower dome glows: light rising off the cloud sea.
         float below = smoothstep(0.05, -0.45, d.y);
         col += vec3(0.20, 0.055, 0.21) * below * 0.6;
+
+        // The finish grows lighter through the world itself, never through a
+        // camera-facing overlay. Looking up or down cannot change its strength.
+        col += vec3(0.055, 0.070, 0.110) * uDepthLight;
+
+        // Brief, restrained feedback when crossing a slide hoop. This is a
+        // uniform atmospheric tint, not geometry that can enter either eye.
+        col += uHoopColor * uHoopPulse * 0.075;
 
         gl_FragColor = vec4(col, 1.0);
       }
@@ -243,5 +262,8 @@ export function createSky(): SkyHandles {
   abyss.position.y = -420;
   group.add(abyss);
 
-  return { group, uniforms: { uTime } };
+  return {
+    group,
+    uniforms: { uTime, uDepthLight, uHoopPulse, uHoopColor }
+  };
 }
