@@ -220,10 +220,19 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
 
   // Silently disable the sole action when immersive VR is unavailable. The
   // landing screen deliberately contains no status or explanatory copy.
+  //
+  // EXCEPT in the packaged Horizon OS app (TWA — detectable via the
+  // android-app:// referrer): its webview misreports XR support
+  // (isSessionSupported hangs or resolves false while requestSession works,
+  // observed on-device 2026-07-23). There the button stays enabled and the
+  // click's requestSession is the real arbiter.
+  const packaged = document.referrer.startsWith('android-app://');
   const xr = (navigator as Navigator & {
     xr?: { isSessionSupported(mode: string): Promise<boolean> };
   }).xr;
-  if (xr?.isSessionSupported) {
+  if (packaged) {
+    // leave enabled
+  } else if (xr?.isSessionSupported) {
     xr.isSessionSupported('immersive-vr')
       .then((ok) => {
         if (!ok) enterVrBtn?.classList.add('disabled');
