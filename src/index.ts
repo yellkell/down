@@ -184,8 +184,18 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   const intro = document.getElementById('intro');
   const enterVrBtn = document.getElementById('enter-vr');
   const wordmark = document.getElementById('wordmark');
+  const loading = document.getElementById('loading');
 
   let dismissed = false;
+  let immersive = false;
+  const finishLoading = (): void => {
+    loading?.classList.add('done');
+    window.setTimeout(() => loading?.remove(), 700);
+  };
+  const revealLanding = (): void => {
+    finishLoading();
+    intro?.removeAttribute('hidden');
+  };
   const dismissIntro = (): void => {
     if (dismissed) return;
     dismissed = true;
@@ -207,38 +217,48 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, {
   });
   world.visibilityState.subscribe((state) => {
     if (state !== VisibilityState.NonImmersive) {
+      immersive = true;
+      finishLoading();
       dismissIntro();
       game?.showStartLobby();
     }
   });
 
-  // Reveal the intro now that the world is ready.
-  const loading = document.getElementById('loading');
-  loading?.classList.add('done');
-  window.setTimeout(() => loading?.remove(), 700);
-  intro?.removeAttribute('hidden');
-
-  // Silently disable the sole action when immersive VR is unavailable. The
-  // landing screen deliberately contains no status or explanatory copy.
-  //
-  // EXCEPT in the packaged Horizon OS app (TWA — detectable via the
-  // android-app:// referrer): its webview misreports XR support
-  // (isSessionSupported hangs or resolves false while requestSession works,
-  // observed on-device 2026-07-23). There the button stays enabled and the
-  // click's requestSession is the real arbiter.
-  const packaged = document.referrer.startsWith('android-app://');
+  // A PWA launch from the Horizon OS app library counts as the user gesture
+  // required by requestSession. Enter XR immediately so the package behaves
+  // like a native immersive app instead of opening on the 2D landing page.
+  // Digital Goods is the platform-supported way to distinguish the packaged
+  // PWA from the same URL opened in Meta Quest Browser.
+  const packagedPwa =
+    typeof (window as Window & { getDigitalGoodsService?: unknown }).getDigitalGoodsService !==
+    'undefined';
   const xr = (navigator as Navigator & {
     xr?: { isSessionSupported(mode: string): Promise<boolean> };
   }).xr;
-  if (packaged) {
-    // leave enabled
-  } else if (xr?.isSessionSupported) {
+
+  if (packagedPwa) {
+    audio.unlock();
+    world.launchXR();
+
+    // If Horizon OS cannot create the session, expose the normal entry button
+    // rather than leaving the player on an indefinite loading screen.
+    window.setTimeout(() => {
+      if (!immersive) revealLanding();
+    }, 4000);
+  } else {
+    revealLanding();
+  }
+
+  // The packaged app deliberately skips this support probe because some Quest
+  // Browser builds report false (or never resolve) even though requestSession
+  // succeeds. Regular browser visitors still get the quiet capability check.
+  if (!packagedPwa && xr?.isSessionSupported) {
     xr.isSessionSupported('immersive-vr')
       .then((ok) => {
         if (!ok) enterVrBtn?.classList.add('disabled');
       })
       .catch(() => enterVrBtn?.classList.add('disabled'));
-  } else {
+  } else if (!packagedPwa) {
     enterVrBtn?.classList.add('disabled');
   }
 });
